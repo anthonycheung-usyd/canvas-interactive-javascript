@@ -1,4 +1,4 @@
-<!-- 14. Logarithm and Exponential Decoder (Enhanced with MathJax Rendering) -->
+<!-- 14. Logarithm and Exponential Decoder (Fully Randomized with MathJax) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -23,21 +23,60 @@
   <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
 
   <script>
-    const logProblems = [
-      { expr: 'Math.log(2) + Math.log(5)', simplified: 'Math.log(10)', display: '\\log(2) + \\log(5) = \\log(10)' },
-      { expr: 'Math.log(9) - Math.log(3)', simplified: 'Math.log(3)', display: '\\log(9) - \\log(3) = \\log(3)' },
-      { expr: '2 * Math.log(4)', simplified: 'Math.log(16)', display: '2\\log(4) = \\log(16)' },
-      { expr: 'Math.log(Math.exp(3))', simplified: '3', display: '\\log(e^3) = 3' },
-      { expr: 'Math.exp(Math.log(7))', simplified: '7', display: 'e^{\\log(7)} = 7' },
-      { expr: 'Math.log(25) / Math.log(5)', simplified: '2', display: '\\frac{\\log(25)}{\\log(5)} = 2' },
-      { expr: 'Math.exp(1) * Math.exp(2)', simplified: 'Math.exp(3)', display: 'e^1 \\cdot e^2 = e^3' }
-    ];
-
     let currentLogProblem = {};
 
+    function getRandomInt(min, max) {
+      return Math.floor(Math.random() * (max - min + 1)) + min;
+    }
+
     function generateLogQuestion() {
-      currentLogProblem = logProblems[Math.floor(Math.random() * logProblems.length)];
-      document.getElementById('question').innerText = currentLogProblem.expr.replace(/Math\.(log|exp)/g, '$1');
+      const type = getRandomInt(1, 5);
+      let exprJS = '', simplifiedJS = '', displayLatex = '';
+      let a, b, result;
+
+      switch (type) {
+        case 1: // log(a) + log(b) = log(a*b)
+          a = getRandomInt(2, 9);
+          b = getRandomInt(2, 9);
+          exprJS = `Math.log(${a}) + Math.log(${b})`;
+          simplifiedJS = `Math.log(${a * b})`;
+          displayLatex = `\\log(${a}) + \\log(${b}) = \\log(${a * b})`;
+          break;
+        case 2: // log(a) - log(b) = log(a/b)
+          a = getRandomInt(10, 50);
+          b = getRandomInt(2, 9);
+          exprJS = `Math.log(${a}) - Math.log(${b})`;
+          simplifiedJS = `Math.log(${(a / b).toFixed(4)})`;
+          displayLatex = `\\log(${a}) - \\log(${b}) = \\log(${(a / b).toFixed(4)})`;
+          break;
+        case 3: // n * log(a) = log(a^n)
+          a = getRandomInt(2, 5);
+          b = getRandomInt(2, 4);
+          exprJS = `${b} * Math.log(${a})`;
+          simplifiedJS = `Math.log(${Math.pow(a, b)})`;
+          displayLatex = `${b} \\log(${a}) = \\log(${Math.pow(a, b)})`;
+          break;
+        case 4: // log(exp(n)) = n
+          a = getRandomInt(1, 5);
+          exprJS = `Math.log(Math.exp(${a}))`;
+          simplifiedJS = `${a}`;
+          displayLatex = `\\log(e^{${a}}) = ${a}`;
+          break;
+        case 5: // exp(log(n)) = n
+          a = getRandomInt(2, 12);
+          exprJS = `Math.exp(Math.log(${a}))`;
+          simplifiedJS = `${a}`;
+          displayLatex = `e^{\\log(${a})} = ${a}`;
+          break;
+      }
+
+      currentLogProblem = {
+        expr: exprJS,
+        simplified: simplifiedJS,
+        display: displayLatex
+      };
+
+      document.getElementById('question').innerText = exprJS.replace(/Math\.(log|exp)/g, '$1');
       document.getElementById('userAnswer').value = '';
       document.getElementById('logFeedback').innerText = '';
       document.getElementById('logSolution').innerText = '';
