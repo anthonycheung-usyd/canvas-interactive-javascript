@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Bond Angle Calculator</title>
+</head>
+<body>
+  <h3>🔷 Bond Angle from 3D Coordinates</h3>
+  <p>Enter coordinates for atoms A, B, and C (B is central atom):</p>
+  A: (<input id="ax" value="1">, <input id="ay" value="0">, <input id="az" value="0">)<br>
+  B: (<input id="bx" value="0">, <input id="by" value="0">, <input id="bz" value="0">)<br>
+  C: (<input id="cx" value="0">, <input id="cy" value="1">, <input id="cz" value="0">)<br>
+  <button onclick="calcAngle()">Calculate Bond Angle</button>
+  <pre id="angleResult"></pre>
+
+  <script>
+    function calcAngle() {
+      const ax = +document.getElementById("ax").value,
+            ay = +document.getElementById("ay").value,
+            az = +document.getElementById("az").value,
+            bx = +document.getElementById("bx").value,
+            by = +document.getElementById("by").value,
+            bz = +document.getElementById("bz").value,
+            cx = +document.getElementById("cx").value,
+            cy = +document.getElementById("cy").value,
+            cz = +document.getElementById("cz").value;
+
+      const AB = [ax - bx, ay - by, az - bz];
+      const CB = [cx - bx, cy - by, cz - bz];
+
+      const dot = AB[0]*CB[0] + AB[1]*CB[1] + AB[2]*CB[2];
+      const magAB = Math.sqrt(AB[0]**2 + AB[1]**2 + AB[2]**2);
+      const magCB = Math.sqrt(CB[0]**2 + CB[1]**2 + CB[2]**2);
+      const angle = Math.acos(dot / (magAB * magCB)) * (180 / Math.PI);
+
+      document.getElementById("angleResult").textContent =
+        `Bond angle A–B–C: ${angle.toFixed(2)}°`;
+    }
+  </script>
+</body>
+</html>
