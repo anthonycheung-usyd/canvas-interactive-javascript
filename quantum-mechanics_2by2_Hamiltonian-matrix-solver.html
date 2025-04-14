@@ -1,0 +1,37 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Quantum Hamiltonian Matrix Solver</title>
+</head>
+<body>
+  <h2>🧮 Quantum Mechanics: 2×2 Hamiltonian Solver</h2>
+  <p>Enter the elements of a simple Hamiltonian matrix to solve A · x = E · x</p>
+  <label>H = [<input id="a11" value="2"> <input id="a12" value="1">]<br>
+             [<input id="a21" value="1"> <input id="a22" value="3">]</label><br><br>
+  <button onclick="solveEigen()">Solve Eigenvalues</button>
+  <pre id="output"></pre>
+
+  <script>
+    function solveEigen() {
+      const a11 = +document.getElementById("a11").value;
+      const a12 = +document.getElementById("a12").value;
+      const a21 = +document.getElementById("a21").value;
+      const a22 = +document.getElementById("a22").value;
+
+      const trace = a11 + a22;
+      const det = a11 * a22 - a12 * a21;
+      const disc = Math.sqrt(trace**2 - 4 * det);
+      const lambda1 = (trace + disc) / 2;
+      const lambda2 = (trace - disc) / 2;
+
+      document.getElementById("output").textContent =
+        `Eigenvalues (Energies):
+λ₁ = ${lambda1.toFixed(3)}
+λ₂ = ${lambda2.toFixed(3)}
+
+These correspond to bonding and antibonding states in a 2-orbital quantum system.`;
+    }
+  </script>
+</body>
+</html>

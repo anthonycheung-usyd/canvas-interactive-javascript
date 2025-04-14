@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <title>Beer-Lambert Uncertainty</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.3.0/math.js"></script>
+</head>
+<body>
+  <h2>📉 Beer–Lambert Law: Uncertainty in Concentration</h2>
+  <p>Use error propagation to find uncertainty in concentration:</p>
+  <p><code>A = εcl → c = A / (εl)</code></p>
+  <label>Absorbance A = <input id="A" value="0.8"> ± <input id="dA" value="0.02"></label><br>
+  <label>ε (M⁻¹cm⁻¹) = <input id="e" value="12000"> ± <input id="de" value="200"></label><br>
+  <label>l (cm) = <input id="l" value="1.00"> ± <input id="dl" value="0.01"></label><br>
+  <button onclick="calculate()">Calculate</button>
+  <pre id="output"></pre>
+
+  <script>
+    function calculate() {
+      const A = parseFloat(document.getElementById("A").value);
+      const dA = parseFloat(document.getElementById("dA").value);
+      const e = parseFloat(document.getElementById("e").value);
+      const de = parseFloat(document.getElementById("de").value);
+      const l = parseFloat(document.getElementById("l").value);
+      const dl = parseFloat(document.getElementById("dl").value);
+
+      const c = A / (e * l);
+      const dc = Math.sqrt(
+        Math.pow(1 / (e * l) * dA, 2) +
+        Math.pow(-A / (e**2 * l) * de, 2) +
+        Math.pow(-A / (e * l**2) * dl, 2)
+      );
+
+      document.getElementById("output").textContent =
+        `Calculated concentration: ${c.toExponential(3)} M\n` +
+        `Uncertainty: ± ${dc.toExponential(2)} M\n\n` +
+        `Used propagation of uncertainty:
+dc = sqrt[(∂c/∂A · dA)² + (∂c/∂ε · dε)² + (∂c/∂l · dl)²]`;
+    }
+  </script>
+</body>
+</html>
