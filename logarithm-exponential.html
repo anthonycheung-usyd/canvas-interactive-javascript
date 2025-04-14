@@ -1,0 +1,75 @@
+<!-- 14. Logarithm and Exponential Decoder (Enhanced with MathJax Rendering) -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Logarithm and Exponential Decoder</title>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <h2>Logarithm and Exponential Practice</h2>
+  <p>Simplify the expression:</p>
+  <div id="question" style="font-weight: bold; font-size: 1.2em;"></div>
+
+  <label>Your Answer:
+    <input type="text" id="userAnswer" placeholder="Enter simplified expression">
+  </label>
+  <button onclick="checkLogAnswer()">Check Answer</button>
+  <button onclick="showLogSolution()">Show Solution</button>
+  <button onclick="generateLogQuestion()">New Problem</button>
+  <button onclick="showRules()">Log Rules</button>
+
+  <div id="logFeedback"></div>
+  <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
+
+  <script>
+    const logProblems = [
+      { expr: 'Math.log(2) + Math.log(5)', simplified: 'Math.log(10)', display: '\\log(2) + \\log(5) = \\log(10)' },
+      { expr: 'Math.log(9) - Math.log(3)', simplified: 'Math.log(3)', display: '\\log(9) - \\log(3) = \\log(3)' },
+      { expr: '2 * Math.log(4)', simplified: 'Math.log(16)', display: '2\\log(4) = \\log(16)' },
+      { expr: 'Math.log(Math.exp(3))', simplified: '3', display: '\\log(e^3) = 3' },
+      { expr: 'Math.exp(Math.log(7))', simplified: '7', display: 'e^{\\log(7)} = 7' },
+      { expr: 'Math.log(25) / Math.log(5)', simplified: '2', display: '\\frac{\\log(25)}{\\log(5)} = 2' },
+      { expr: 'Math.exp(1) * Math.exp(2)', simplified: 'Math.exp(3)', display: 'e^1 \\cdot e^2 = e^3' }
+    ];
+
+    let currentLogProblem = {};
+
+    function generateLogQuestion() {
+      currentLogProblem = logProblems[Math.floor(Math.random() * logProblems.length)];
+      document.getElementById('question').innerText = currentLogProblem.expr.replace(/Math\.(log|exp)/g, '$1');
+      document.getElementById('userAnswer').value = '';
+      document.getElementById('logFeedback').innerText = '';
+      document.getElementById('logSolution').innerText = '';
+    }
+
+    function checkLogAnswer() {
+      const userInput = document.getElementById('userAnswer').value.trim();
+      try {
+        const correctVal = eval(currentLogProblem.simplified);
+        const userVal = eval(userInput);
+        const correct = Math.abs(userVal - correctVal) < 0.001;
+        document.getElementById('logFeedback').innerText = correct ? '✅ Correct!' : '❌ Try again!';
+      } catch (e) {
+        document.getElementById('logFeedback').innerText = 'Error in your expression.';
+      }
+    }
+
+    function showLogSolution() {
+      document.getElementById('logSolution').innerHTML = `\\[ ${currentLogProblem.display} \\]`;
+      MathJax.typeset();
+    }
+
+    function showRules() {
+      alert(`Logarithmic & Exponential Rules:\n
+log(ab) = log(a) + log(b)\n
+log(a/b) = log(a) - log(b)\n
+log(a^n) = n * log(a)\n
+exp(log(a)) = a\n
+log(exp(a)) = a`);
+    }
+
+    window.onload = generateLogQuestion;
+  </script>
+</body>
+</html>
