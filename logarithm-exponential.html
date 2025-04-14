@@ -1,0 +1,48 @@
+<!-- 14. Logarithm and Exponential Decoder -->
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Logarithm and Exponential Decoder</title>
+</head>
+<body>
+  <h2>Logarithm and Exponential Decoder</h2>
+  <label>Enter expression (use Math.log, Math.exp):
+    <input type="text" id="logInput" placeholder="Math.log(10) + Math.exp(1)">
+  </label>
+  <button id="decodeBtn">Evaluate</button>
+  <button id="logRulesBtn">Show Rules</button>
+  <pre id="logResult"></pre>
+
+  <script>
+    const logExpDecoder = () => {
+      const logRules = `
+log(ab) = log(a) + log(b)
+log(a/b) = log(a) - log(b)
+log(a^n) = n * log(a)
+exp(log(a)) = a
+log(exp(a)) = a`;
+
+      const calculate = (expr) => {
+        try {
+          let result = eval(expr);
+          return result;
+        } catch (e) {
+          return 'Error: ' + e.message;
+        }
+      };
+
+      document.getElementById('decodeBtn').onclick = () => {
+        const input = document.getElementById('logInput').value;
+        const result = calculate(input);
+        document.getElementById('logResult').innerText = `Result: ${result}`;
+      };
+
+      document.getElementById('logRulesBtn').onclick = () => {
+        alert('Logarithm and Exponential Rules:\n' + logRules);
+      };
+    };
+
+    window.onload = logExpDecoder;
+  </script>
+</body>
+</html>
