@@ -2,43 +2,56 @@
 <html>
 <head>
   <meta charset="UTF-8">
-  <title>Arrhenius Equation Visualizer</title>
+  <title>Arrhenius Plot Builder</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 </head>
 <body>
-  <h3>📈 Arrhenius Equation Explorer</h3>
-  <label>Pre-exponential factor (A): <input id="A" type="number" value="1e12"></label><br>
-  <label>Activation energy (Ea, kJ/mol): <input id="Ea" type="number" value="50"></label><br>
-  <label>Temperature range (K): <input id="Tmin" value="250"> to <input id="Tmax" value="400"></label><br>
-  <button onclick="plotArrhenius()">Plot</button>
-  <canvas id="arrPlot" width="500" height="300"></canvas>
+  <h2>📈 Arrhenius Equation Plot: ln(k) vs 1/T</h2>
+  <p>Explore how the activation energy affects the linearized Arrhenius plot.</p>
+  <label>Activation Energy (Ea, kJ/mol): <input id="Ea" value="50"></label><br>
+  <label>Pre-exponential Factor (A): <input id="A" value="1e12"></label><br>
+  <button onclick="generatePlot()">Generate Plot</button>
+  <canvas id="plot" width="500" height="300"></canvas>
+  <pre id="explanation"></pre>
 
   <script>
-    function plotArrhenius() {
+    function generatePlot() {
+      const Ea = parseFloat(document.getElementById("Ea").value) * 1000;
       const A = parseFloat(document.getElementById("A").value);
-      const Ea = parseFloat(document.getElementById("Ea").value) * 1000; // convert to J/mol
-      const Tmin = parseInt(document.getElementById("Tmin").value);
-      const Tmax = parseInt(document.getElementById("Tmax").value);
       const R = 8.314;
+      const T = [], xvals = [], yvals = [];
 
-      const labels = [], data = [];
-      for (let T = Tmin; T <= Tmax; T += 5) {
-        labels.push(T);
-        let k = A * Math.exp(-Ea / (R * T));
-        data.push(k);
+      for (let i = 250; i <= 400; i += 10) {
+        let k = A * Math.exp(-Ea / (R * i));
+        T.push(i);
+        xvals.push(1 / i);
+        yvals.push(Math.log(k));
       }
 
-      new Chart(document.getElementById("arrPlot"), {
+      new Chart(document.getElementById("plot"), {
         type: 'line',
         data: {
-          labels: labels,
-          datasets: [{ label: 'Rate Constant k', data: data }]
+          labels: xvals.map(x => x.toFixed(4)),
+          datasets: [{
+            label: 'ln(k)',
+            data: yvals,
+            borderColor: 'blue'
+          }]
         },
         options: {
-          scales: { y: { type: 'logarithmic', title: { display: true, text: 'k (log scale)' } },
-                    x: { title: { display: true, text: 'Temperature (K)' } } }
+          scales: {
+            x: { title: { display: true, text: '1 / T (K⁻¹)' } },
+            y: { title: { display: true, text: 'ln(k)' } }
+          }
         }
       });
+
+      const slope = (yvals[yvals.length - 1] - yvals[0]) / (xvals[yvals.length - 1] - xvals[0]);
+      const estimatedEa = -slope * R;
+
+      document.getElementById("explanation").textContent =
+        `This plot is based on the linearized form: ln(k) = -Ea/R * (1/T) + ln A
+→ Estimated Ea from slope: ${estimatedEa.toFixed(2)} J/mol`;
     }
   </script>
 </body>
