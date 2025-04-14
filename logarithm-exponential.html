@@ -1,4 +1,4 @@
-<!-- 14. Logarithm and Exponential Decoder (Fully Randomized with MathJax) -->
+<!-- 14. Logarithm and Exponential Decoder (User-Friendly Input, Randomized, with MathJax) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -12,7 +12,7 @@
   <div id="question" style="font-weight: bold; font-size: 1.2em;"></div>
 
   <label>Your Answer:
-    <input type="text" id="userAnswer" placeholder="Enter simplified expression">
+    <input type="text" id="userAnswer" placeholder="e.g., log(10), exp(3), 2">
   </label>
   <button onclick="checkLogAnswer()">Check Answer</button>
   <button onclick="showLogSolution()">Show Solution</button>
@@ -32,37 +32,37 @@
     function generateLogQuestion() {
       const type = getRandomInt(1, 5);
       let exprJS = '', simplifiedJS = '', displayLatex = '';
-      let a, b, result;
+      let a, b;
 
       switch (type) {
-        case 1: // log(a) + log(b) = log(a*b)
+        case 1:
           a = getRandomInt(2, 9);
           b = getRandomInt(2, 9);
           exprJS = `Math.log(${a}) + Math.log(${b})`;
           simplifiedJS = `Math.log(${a * b})`;
           displayLatex = `\\log(${a}) + \\log(${b}) = \\log(${a * b})`;
           break;
-        case 2: // log(a) - log(b) = log(a/b)
+        case 2:
           a = getRandomInt(10, 50);
           b = getRandomInt(2, 9);
           exprJS = `Math.log(${a}) - Math.log(${b})`;
           simplifiedJS = `Math.log(${(a / b).toFixed(4)})`;
           displayLatex = `\\log(${a}) - \\log(${b}) = \\log(${(a / b).toFixed(4)})`;
           break;
-        case 3: // n * log(a) = log(a^n)
+        case 3:
           a = getRandomInt(2, 5);
           b = getRandomInt(2, 4);
           exprJS = `${b} * Math.log(${a})`;
           simplifiedJS = `Math.log(${Math.pow(a, b)})`;
           displayLatex = `${b} \\log(${a}) = \\log(${Math.pow(a, b)})`;
           break;
-        case 4: // log(exp(n)) = n
+        case 4:
           a = getRandomInt(1, 5);
           exprJS = `Math.log(Math.exp(${a}))`;
           simplifiedJS = `${a}`;
           displayLatex = `\\log(e^{${a}}) = ${a}`;
           break;
-        case 5: // exp(log(n)) = n
+        case 5:
           a = getRandomInt(2, 12);
           exprJS = `Math.exp(Math.log(${a}))`;
           simplifiedJS = `${a}`;
@@ -82,11 +82,19 @@
       document.getElementById('logSolution').innerText = '';
     }
 
+    function preprocessUserInput(input) {
+      return input
+        .replace(/\blog\(/g, 'Math.log(')
+        .replace(/\bexp\(/g, 'Math.exp(')
+        .replace(/\^/g, '**');
+    }
+
     function checkLogAnswer() {
-      const userInput = document.getElementById('userAnswer').value.trim();
+      const rawInput = document.getElementById('userAnswer').value.trim();
+      const safeInput = preprocessUserInput(rawInput);
       try {
         const correctVal = eval(currentLogProblem.simplified);
-        const userVal = eval(userInput);
+        const userVal = eval(safeInput);
         const correct = Math.abs(userVal - correctVal) < 0.001;
         document.getElementById('logFeedback').innerText = correct ? '✅ Correct!' : '❌ Try again!';
       } catch (e) {
