@@ -1,38 +1,42 @@
-<!-- 14. Logarithm and Exponential Decoder (Fully MathJax-Rendered) -->
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Logarithm and Exponential Decoder</title>
+  <title>Natural Logarithm and Exponential Decoder</title>
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script id="MathJax-script" async 
+          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
 </head>
 <body>
   <h2>Logarithm and Exponential Practice</h2>
-  <p>Simplify the expression:</p>
+  <p>Rewrite the expression below as a single logarithm or an integer:</p>
   <div id="question" style="font-weight: bold; font-size: 1.2em;"></div>
 
   <label>Your Answer:
-    <input type="text" id="userAnswer" placeholder="e.g., log(10), exp(3), 2">
+    <input type="text" id="userAnswer" placeholder="e.g., ln(10), exp(3), 2">
   </label>
   <button onclick="checkLogAnswer()">Submit</button>
   <button onclick="showRules()">Log Rules</button>
+  <button id="skipButton" style="display: none;" onclick="skipQuestion()">Next Question</button>
 
   <div id="logFeedback"></div>
   <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
+  <div id="logCorrectAnswer" style="margin-top: 0.5em; font-size: 1em; color: green;"></div>
   <div id="logRuleHint" style="margin-top: 1em; font-size: 1em; color: #555;"></div>
+  <div id="countdownTimer" style="margin-top: 1em; font-style: italic;"></div>
   <div id="scoreDisplay" style="margin-top: 1em; font-size: 1.1em; font-weight: bold;"></div>
 
   <script>
     let currentLogProblem = {};
     let score = 0;
     let total = 0;
+    let countdownInterval;
 
     const ruleHints = {
-      product: '\\log(ab) = \\log(a) + \\log(b)',
-      quotient: '\\log(a/b) = \\log(a) - \\log(b)',
-      power: '\\log(a^n) = n \\log(a)',
-      logExp: '\\log(e^x) = x',
-      expLog: 'e^{\\log(x)} = x'
+      product: '\\ln(ab) = \\ln(a) + \\ln(b)',
+      quotient: '\\ln(a/b) = \\ln(a) - \\ln(b)',
+      power: '\\ln(a^n) = n \\ln(a)',
+      logExp: '\\ln(e^x) = x',
+      expLog: 'e^{\\ln(x)} = x'
     };
 
     function getRandomInt(min, max) {
@@ -40,8 +44,12 @@
     }
 
     function generateLogQuestion() {
+      clearInterval(countdownInterval);
+      document.getElementById('skipButton').style.display = 'none';
+      document.getElementById('countdownTimer').innerText = '';
+
       const type = getRandomInt(1, 5);
-      let exprJS = '', simplifiedJS = '', displayLatex = '', questionLatex = '', ruleKey = '';
+      let exprJS = '', simplifiedJS = '', displayLatex = '', ruleKey = '';
       let a, b;
 
       switch (type) {
@@ -50,8 +58,7 @@
           b = getRandomInt(2, 9);
           exprJS = `Math.log(${a}) + Math.log(${b})`;
           simplifiedJS = `Math.log(${a * b})`;
-          questionLatex = `\\log(${a}) + \\log(${b})`;
-          displayLatex = `\\log(${a}) + \\log(${b}) = \\log(${a * b})`;
+          displayLatex = `\\ln(${a}) + \\ln(${b})`;
           ruleKey = 'product';
           break;
         case 2:
@@ -59,8 +66,7 @@
           b = getRandomInt(2, 9);
           exprJS = `Math.log(${a}) - Math.log(${b})`;
           simplifiedJS = `Math.log(${(a / b).toFixed(4)})`;
-          questionLatex = `\\log(${a}) - \\log(${b})`;
-          displayLatex = `\\log(${a}) - \\log(${b}) = \\log(${(a / b).toFixed(4)})`;
+          displayLatex = `\\ln(${a}) - \\ln(${b})`;
           ruleKey = 'quotient';
           break;
         case 3:
@@ -68,24 +74,21 @@
           b = getRandomInt(2, 4);
           exprJS = `${b} * Math.log(${a})`;
           simplifiedJS = `Math.log(${Math.pow(a, b)})`;
-          questionLatex = `${b} \\log(${a})`;
-          displayLatex = `${b} \\log(${a}) = \\log(${Math.pow(a, b)})`;
+          displayLatex = `${b} \\ln(${a})`;
           ruleKey = 'power';
           break;
         case 4:
           a = getRandomInt(1, 5);
           exprJS = `Math.log(Math.exp(${a}))`;
           simplifiedJS = `${a}`;
-          questionLatex = `\\log(e^{${a}})`;
-          displayLatex = `\\log(e^{${a}}) = ${a}`;
+          displayLatex = `\\ln(e^{${a}})`;
           ruleKey = 'logExp';
           break;
         case 5:
           a = getRandomInt(2, 12);
           exprJS = `Math.exp(Math.log(${a}))`;
           simplifiedJS = `${a}`;
-          questionLatex = `e^{\\log(${a})}`;
-          displayLatex = `e^{\\log(${a})} = ${a}`;
+          displayLatex = `e^{\\ln(${a})}`;
           ruleKey = 'expLog';
           break;
       }
@@ -93,23 +96,23 @@
       currentLogProblem = {
         expr: exprJS,
         simplified: simplifiedJS,
-        question: questionLatex,
         display: displayLatex,
         rule: ruleHints[ruleKey]
       };
 
-      document.getElementById('question').innerHTML = `\\[ ${currentLogProblem.question} \\]`;
+      document.getElementById('question').innerHTML = `\\[ ${displayLatex} \\]`;
+      MathJax.typeset();
       document.getElementById('userAnswer').value = '';
       document.getElementById('logFeedback').innerText = '';
       document.getElementById('logSolution').innerText = '';
+      document.getElementById('logCorrectAnswer').innerText = '';
       document.getElementById('logRuleHint').innerText = '';
-      MathJax.typeset();
       updateScoreDisplay();
     }
 
     function preprocessUserInput(input) {
       return input
-        .replace(/\blog\(/g, 'Math.log(')
+        .replace(/\bln\(/g, 'Math.log(')
         .replace(/\bexp\(/g, 'Math.exp(')
         .replace(/\^/g, '**');
     }
@@ -131,18 +134,21 @@
         score++;
         document.getElementById('logFeedback').innerText = '✅ Correct!';
         updateScoreDisplay();
-        setTimeout(() => generateLogQuestion(), 1500);
+        startCountdown(5);
       } else {
         document.getElementById('logFeedback').innerText = '❌ Incorrect. See solution and rule below.';
         showLogSolution();
         showLogRule();
         updateScoreDisplay();
-        setTimeout(() => generateLogQuestion(), 5000);
+        startCountdown(5);
       }
+
+      document.getElementById('skipButton').style.display = 'inline';
     }
 
     function showLogSolution() {
       document.getElementById('logSolution').innerHTML = `\\[ ${currentLogProblem.display} \\]`;
+      document.getElementById('logCorrectAnswer').innerHTML = `\\[ \\text{Answer: } ${currentLogProblem.simplified.replace('Math.log', '\\ln').replace('Math.exp', 'e^')} \\]`;
       MathJax.typeset();
     }
 
@@ -152,16 +158,35 @@
     }
 
     function showRules() {
-      alert(`Logarithmic & Exponential Rules:\n
-log(ab) = log(a) + log(b)\n
-log(a/b) = log(a) - log(b)\n
-log(a^n) = n * log(a)\n
-exp(log(a)) = a\n
-log(exp(a)) = a`);
+      alert(`Natural Logarithmic & Exponential Rules:\n
+ln(ab) = ln(a) + ln(b)\n
+ln(a/b) = ln(a) - ln(b)\n
+ln(a^n) = n * ln(a)\n
+exp(ln(a)) = a\n
+ln(exp(a)) = a`);
     }
 
     function updateScoreDisplay() {
       document.getElementById('scoreDisplay').innerText = `Score: ${score} / ${total}`;
+    }
+
+    function startCountdown(seconds) {
+      let remaining = seconds;
+      document.getElementById('countdownTimer').innerText = `Next question in ${remaining} seconds...`;
+      countdownInterval = setInterval(() => {
+        remaining--;
+        if (remaining > 0) {
+          document.getElementById('countdownTimer').innerText = `Next question in ${remaining} seconds...`;
+        } else {
+          clearInterval(countdownInterval);
+          generateLogQuestion();
+        }
+      }, 1000);
+    }
+
+    function skipQuestion() {
+      clearInterval(countdownInterval);
+      generateLogQuestion();
     }
 
     window.onload = generateLogQuestion;
