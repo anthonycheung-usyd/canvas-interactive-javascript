@@ -1,4 +1,4 @@
-<!-- 14. Logarithm and Exponential Decoder (User-Friendly Input, Randomized, with MathJax) -->
+<!-- 14. Logarithm and Exponential Decoder (MathJax Rule Display Included) -->
 <!DOCTYPE html>
 <html>
 <head>
@@ -14,16 +14,26 @@
   <label>Your Answer:
     <input type="text" id="userAnswer" placeholder="e.g., log(10), exp(3), 2">
   </label>
-  <button onclick="checkLogAnswer()">Check Answer</button>
-  <button onclick="showLogSolution()">Show Solution</button>
-  <button onclick="generateLogQuestion()">New Problem</button>
+  <button onclick="checkLogAnswer()">Submit</button>
   <button onclick="showRules()">Log Rules</button>
 
   <div id="logFeedback"></div>
   <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
+  <div id="logRuleHint" style="margin-top: 1em; font-size: 1em; color: #555;"></div>
+  <div id="scoreDisplay" style="margin-top: 1em; font-size: 1.1em; font-weight: bold;"></div>
 
   <script>
     let currentLogProblem = {};
+    let score = 0;
+    let total = 0;
+
+    const ruleHints = {
+      product: '\\log(ab) = \\log(a) + \\log(b)',
+      quotient: '\\log(a/b) = \\log(a) - \\log(b)',
+      power: '\\log(a^n) = n \\log(a)',
+      logExp: '\\log(e^x) = x',
+      expLog: 'e^{\\log(x)} = x'
+    };
 
     function getRandomInt(min, max) {
       return Math.floor(Math.random() * (max - min + 1)) + min;
@@ -31,7 +41,7 @@
 
     function generateLogQuestion() {
       const type = getRandomInt(1, 5);
-      let exprJS = '', simplifiedJS = '', displayLatex = '';
+      let exprJS = '', simplifiedJS = '', displayLatex = '', ruleKey = '';
       let a, b;
 
       switch (type) {
@@ -41,6 +51,7 @@
           exprJS = `Math.log(${a}) + Math.log(${b})`;
           simplifiedJS = `Math.log(${a * b})`;
           displayLatex = `\\log(${a}) + \\log(${b}) = \\log(${a * b})`;
+          ruleKey = 'product';
           break;
         case 2:
           a = getRandomInt(10, 50);
@@ -48,6 +59,7 @@
           exprJS = `Math.log(${a}) - Math.log(${b})`;
           simplifiedJS = `Math.log(${(a / b).toFixed(4)})`;
           displayLatex = `\\log(${a}) - \\log(${b}) = \\log(${(a / b).toFixed(4)})`;
+          ruleKey = 'quotient';
           break;
         case 3:
           a = getRandomInt(2, 5);
@@ -55,31 +67,37 @@
           exprJS = `${b} * Math.log(${a})`;
           simplifiedJS = `Math.log(${Math.pow(a, b)})`;
           displayLatex = `${b} \\log(${a}) = \\log(${Math.pow(a, b)})`;
+          ruleKey = 'power';
           break;
         case 4:
           a = getRandomInt(1, 5);
           exprJS = `Math.log(Math.exp(${a}))`;
           simplifiedJS = `${a}`;
           displayLatex = `\\log(e^{${a}}) = ${a}`;
+          ruleKey = 'logExp';
           break;
         case 5:
           a = getRandomInt(2, 12);
           exprJS = `Math.exp(Math.log(${a}))`;
           simplifiedJS = `${a}`;
           displayLatex = `e^{\\log(${a})} = ${a}`;
+          ruleKey = 'expLog';
           break;
       }
 
       currentLogProblem = {
         expr: exprJS,
         simplified: simplifiedJS,
-        display: displayLatex
+        display: displayLatex,
+        rule: ruleHints[ruleKey]
       };
 
       document.getElementById('question').innerText = exprJS.replace(/Math\.(log|exp)/g, '$1');
       document.getElementById('userAnswer').value = '';
       document.getElementById('logFeedback').innerText = '';
       document.getElementById('logSolution').innerText = '';
+      document.getElementById('logRuleHint').innerText = '';
+      updateScoreDisplay();
     }
 
     function preprocessUserInput(input) {
@@ -92,18 +110,37 @@
     function checkLogAnswer() {
       const rawInput = document.getElementById('userAnswer').value.trim();
       const safeInput = preprocessUserInput(rawInput);
+      let correct = false;
       try {
         const correctVal = eval(currentLogProblem.simplified);
         const userVal = eval(safeInput);
-        const correct = Math.abs(userVal - correctVal) < 0.001;
-        document.getElementById('logFeedback').innerText = correct ? '✅ Correct!' : '❌ Try again!';
+        correct = Math.abs(userVal - correctVal) < 0.001;
       } catch (e) {
-        document.getElementById('logFeedback').innerText = 'Error in your expression.';
+        correct = false;
+      }
+
+      total++;
+      if (correct) {
+        score++;
+        document.getElementById('logFeedback').innerText = '✅ Correct!';
+        updateScoreDisplay();
+        setTimeout(() => generateLogQuestion(), 1500);
+      } else {
+        document.getElementById('logFeedback').innerText = '❌ Incorrect. See solution and rule below.';
+        showLogSolution();
+        showLogRule();
+        updateScoreDisplay();
+        setTimeout(() => generateLogQuestion(), 5000);
       }
     }
 
     function showLogSolution() {
       document.getElementById('logSolution').innerHTML = `\\[ ${currentLogProblem.display} \\]`;
+      MathJax.typeset();
+    }
+
+    function showLogRule() {
+      document.getElementById('logRuleHint').innerHTML = `\\[ ${currentLogProblem.rule} \\]`;
       MathJax.typeset();
     }
 
@@ -114,6 +151,10 @@ log(a/b) = log(a) - log(b)\n
 log(a^n) = n * log(a)\n
 exp(log(a)) = a\n
 log(exp(a)) = a`);
+    }
+
+    function updateScoreDisplay() {
+      document.getElementById('scoreDisplay').innerText = `Score: ${score} / ${total}`;
     }
 
     window.onload = generateLogQuestion;
