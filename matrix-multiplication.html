@@ -160,7 +160,7 @@
       const container = document.getElementById("matrixLatex");
       const latex = `
         <p>Calculate <span style="font-family: serif;">\\( AB \\)</span>, where:</p>
-        \\[ A = ${toLatexMatrix(A)} \\quad B = ${toLatexMatrix(B)} \\]
+        \\[ A = ${toLatexMatrix(A)} \\,, \\quad B = ${toLatexMatrix(B)} \\,. \\]
       `;
       container.innerHTML = latex;
       MathJax.typeset();
