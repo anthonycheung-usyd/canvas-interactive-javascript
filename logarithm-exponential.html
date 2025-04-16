@@ -16,12 +16,17 @@
   </label>
   <button onclick="checkLogAnswer()">Submit</button>
   <button onclick="showRules()">Log Rules</button>
-  <button id="skipButton" style="display: none;" onclick="skipQuestion()">Next Question</button>
 
-  <div id="logFeedback"></div>
+  <div id="logFeedback" style="margin-top: 1em;"></div>
   <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
   <div id="logCorrectAnswer" style="margin-top: 0.5em; font-size: 1em; color: green;"></div>
   <div id="logRuleHint" style="margin-top: 1em; font-size: 1em; color: #555;"></div>
+
+  <div style="margin-top: 1em;">
+    <button id="skipButton" style="display: none;" onclick="skipQuestion()">Next Question</button>
+    <button id="pauseButton" style="display: none;" onclick="toggleCountdown()">Pause Countdown</button>
+  </div>
+
   <div id="countdownTimer" style="margin-top: 1em; font-style: italic;"></div>
   <div id="scoreDisplay" style="margin-top: 1em; font-size: 1.1em; font-weight: bold;"></div>
 
@@ -30,6 +35,8 @@
     let score = 0;
     let total = 0;
     let countdownInterval;
+    let countdownRemaining = 0;
+    let countdownPaused = false;
 
     const ruleHints = {
       product: '\\ln(ab) = \\ln(a) + \\ln(b)',
@@ -45,7 +52,9 @@
 
     function generateLogQuestion() {
       clearInterval(countdownInterval);
+      countdownPaused = false;
       document.getElementById('skipButton').style.display = 'none';
+      document.getElementById('pauseButton').style.display = 'none';
       document.getElementById('countdownTimer').innerText = '';
 
       const type = getRandomInt(1, 5);
@@ -133,22 +142,22 @@
       if (correct) {
         score++;
         document.getElementById('logFeedback').innerText = '✅ Correct!';
-        updateScoreDisplay();
-        startCountdown(5);
       } else {
         document.getElementById('logFeedback').innerText = '❌ Incorrect. See solution and rule below.';
         showLogSolution();
         showLogRule();
-        updateScoreDisplay();
-        startCountdown(5);
       }
 
+      updateScoreDisplay();
+      startCountdown(5);
       document.getElementById('skipButton').style.display = 'inline';
+      document.getElementById('pauseButton').style.display = 'inline';
+      document.getElementById('pauseButton').innerText = "Pause Countdown";
     }
 
     function showLogSolution() {
-      document.getElementById('logSolution').innerHTML = `\\[ ${currentLogProblem.display} \\]`;
-      document.getElementById('logCorrectAnswer').innerHTML = `\\[ \\text{Answer: } ${currentLogProblem.simplified.replace('Math.log', '\\ln').replace('Math.exp', 'e^')} \\]`;
+      document.getElementById('logCorrectAnswer').innerHTML =
+        `\\[ \\text{Correct Answer: } ${currentLogProblem.simplified.replace('Math.log', '\\ln').replace('Math.exp', 'e^')} \\]`;
       MathJax.typeset();
     }
 
@@ -157,31 +166,33 @@
       MathJax.typeset();
     }
 
-    function showRules() {
-      alert(`Natural Logarithmic & Exponential Rules:\n
-ln(ab) = ln(a) + ln(b)\n
-ln(a/b) = ln(a) - ln(b)\n
-ln(a^n) = n * ln(a)\n
-exp(ln(a)) = a\n
-ln(exp(a)) = a`);
-    }
-
     function updateScoreDisplay() {
       document.getElementById('scoreDisplay').innerText = `Score: ${score} / ${total}`;
     }
 
     function startCountdown(seconds) {
-      let remaining = seconds;
-      document.getElementById('countdownTimer').innerText = `Next question in ${remaining} seconds...`;
+      countdownRemaining = seconds;
+      countdownPaused = false;
+      document.getElementById('countdownTimer').innerText = `Next question in ${countdownRemaining} seconds...`;
+
       countdownInterval = setInterval(() => {
-        remaining--;
-        if (remaining > 0) {
-          document.getElementById('countdownTimer').innerText = `Next question in ${remaining} seconds...`;
-        } else {
-          clearInterval(countdownInterval);
-          generateLogQuestion();
+        if (!countdownPaused) {
+          countdownRemaining--;
+          if (countdownRemaining > 0) {
+            document.getElementById('countdownTimer').innerText =
+              `Next question in ${countdownRemaining} seconds...`;
+          } else {
+            clearInterval(countdownInterval);
+            generateLogQuestion();
+          }
         }
       }, 1000);
+    }
+
+    function toggleCountdown() {
+      countdownPaused = !countdownPaused;
+      document.getElementById('pauseButton').innerText =
+        countdownPaused ? "Resume Countdown" : "Pause Countdown";
     }
 
     function skipQuestion() {
@@ -189,7 +200,10 @@ ln(exp(a)) = a`);
       generateLogQuestion();
     }
 
-    window.onload = generateLogQuestion;
+    window.onload = () => {
+      updateScoreDisplay();  // Ensure score shown on load
+      generateLogQuestion();
+    };
   </script>
 </body>
 </html>
