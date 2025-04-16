@@ -215,57 +215,32 @@
       document.getElementById("pauseButton").style.display = "inline";
       document.getElementById("pauseButton").innerText = "Pause Countdown";
 
-      if (!validAB && value === "undefined") {
-        score++;
-        document.getElementById("matrixFeedback").innerText = "✅ Correct! \\( AB \\) is undefined.";
-        updateScore();
-        startCountdown(5); // correct
-        return;
-      }
-
-      if (!validAB && value !== "undefined") {
-        document.getElementById("matrixFeedback").innerText = "❌ Incorrect. \\( AB \\) is undefined.";
-        updateScore();
-        startCountdown(10); // incorrect
-        return;
-      }
-
-      if (validAB && value === "undefined") {
-        document.getElementById("matrixFeedback").innerText = "❌ Incorrect. \\( AB \\) is defined.";
-        showMatrixSolutionWithClicks();
-        updateScore();
-        startCountdown(10); // incorrect
-        return;
-      }
-
-      const [rows, cols] = value.split('x').map(Number);
-      if (rows !== C.length || cols !== C[0].length) {
-        document.getElementById("matrixFeedback").innerText = "❌ Incorrect dimensions for \\( AB \\).";
-        showMatrixSolutionWithClicks();
-        updateScore();
-        startCountdown(10); // incorrect
-        return;
-      }
-
-      let correct = true;
-      for (let i = 0; i < rows; i++) {
-        for (let j = 0; j < cols; j++) {
-          const val = parseInt(document.getElementById(`cell-${i}-${j}`).value);
-          if (val !== C[i][j]) correct = false;
+      let correct = false;
+      if (validAB && value !== "undefined") {
+        const [rows, cols] = value.split('x').map(Number);
+        if (rows === C.length && cols === C[0].length) {
+          correct = true;
+          for (let i = 0; i < rows; i++) {
+            for (let j = 0; j < cols; j++) {
+              const val = parseInt(document.getElementById(`cell-${i}-${j}`).value);
+              if (val !== C[i][j]) correct = false;
+            }
+          }
         }
+      } else if (!validAB && value === "undefined") {
+        correct = true;
       }
 
       if (correct) {
         score++;
         document.getElementById("matrixFeedback").innerText = "✅ Correct!";
         updateScore();
-        startCountdown(5); // correct
+        startCountdown(5);
       } else {
-        document.getElementById("matrixFeedback").innerText =
-          "❌ Incorrect. Click on a cell below to see how it was computed.";
-        showMatrixSolutionWithClicks();
+        document.getElementById("matrixFeedback").innerText = "❌ Incorrect.";
+        if (validAB) showMatrixSolutionWithClicks();
         updateScore();
-        startCountdown(10); // incorrect
+        startCountdown(10);
       }
 
       MathJax.typeset();
@@ -304,7 +279,6 @@
 
     function showMatrixSolutionWithClicks() {
       if (!validAB) return;
-
       const container = document.getElementById("matrixSolution");
       container.innerHTML = `<p>Correct Product \\( AB \\) (click a cell to see how it was calculated):</p>`;
       let html = `<div class="centered-matrix-line matrix-wrapper">
