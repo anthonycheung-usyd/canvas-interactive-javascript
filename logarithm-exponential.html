@@ -142,22 +142,24 @@
       if (correct) {
         score++;
         document.getElementById('logFeedback').innerText = '✅ Correct!';
+        startCountdown(5); // 5 seconds if correct
       } else {
         document.getElementById('logFeedback').innerText = '❌ Incorrect. See solution and rule below.';
         showLogSolution();
         showLogRule();
+        startCountdown(10); // 10 seconds if incorrect
       }
 
       updateScoreDisplay();
-      startCountdown(5);
       document.getElementById('skipButton').style.display = 'inline';
       document.getElementById('pauseButton').style.display = 'inline';
       document.getElementById('pauseButton').innerText = "Pause Countdown";
     }
 
     function showLogSolution() {
+      document.getElementById('logSolution').innerHTML = `\\[ ${currentLogProblem.display} \\]`;
       document.getElementById('logCorrectAnswer').innerHTML =
-        `\\[ \\text{Correct Answer: } ${currentLogProblem.simplified.replace('Math.log', '\\ln').replace('Math.exp', 'e^')} \\]`;
+        `\\[ \\text{Answer: } ${currentLogProblem.simplified.replace('Math.log', '\\ln').replace('Math.exp', 'e^')} \\]`;
       MathJax.typeset();
     }
 
@@ -201,7 +203,7 @@
     }
 
     window.onload = () => {
-      updateScoreDisplay();  // Ensure score shown on load
+      updateScoreDisplay();  // ensure 0/0 shows on load
       generateLogQuestion();
     };
   </script>
