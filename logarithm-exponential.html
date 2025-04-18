@@ -2,9 +2,19 @@
 <html>
 <head>
   <title>Natural Logarithm and Exponential Decoder</title>
-  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
-  <script id="MathJax-script" async 
-          src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script>
+    window.MathJax = {
+      tex: {
+        inlineMath: [['$', '$'], ['\\(', '\\)']],
+        displayMath: [['\\[', '\\]']],
+        processEscapes: true
+      },
+      svg: {
+        fontCache: 'global'
+      }
+    };
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
 </head>
 <body>
   <h2>Logarithm and Exponential Practice</h2>
@@ -15,7 +25,17 @@
     <input type="text" id="userAnswer" placeholder="e.g., ln(10), exp(3), 2">
   </label>
   <button onclick="checkLogAnswer()">Submit</button>
-  <button onclick="showRules()">Log Rules</button>
+
+  <details id="logRulesDetails" open style="margin-top: 1em; font-size: 1em;">
+    <summary style="cursor: pointer; font-weight: bold;">Logarithm Rules</summary>
+    <div id="logRulesContent" style="margin-top: 0.5em;">
+      \[ \ln(ab) = \ln(a) + \ln(b) \quad \text{(Product Rule)} \]  
+      \[ \ln \left(\frac{a}{b}\right) = \ln(a) - \ln(b) \quad \text{(Quotient Rule)} \]  
+      \[ \ln(a^n) = n \ln(a) \quad \text{(Power Rule)} \]  
+      \[ \ln(e^x) = x \quad \text{(Log of Exponential)} \]  
+      \[ e^{\ln(x)} = x \quad \text{(Exponential of Log)} \]
+    </div>
+  </details>
 
   <div id="logFeedback" style="margin-top: 1em;"></div>
   <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
@@ -40,7 +60,7 @@
 
     const ruleHints = {
       product: '\\ln(ab) = \\ln(a) + \\ln(b)',
-      quotient: '\\ln(a/b) = \\ln(a) - \\ln(b)',
+      quotient: '\\ln\\left(\\frac{a}{b}\\right) = \\ln(a) - \\ln(b)',
       power: '\\ln(a^n) = n \\ln(a)',
       logExp: '\\ln(e^x) = x',
       expLog: 'e^{\\ln(x)} = x'
@@ -142,12 +162,12 @@
       if (correct) {
         score++;
         document.getElementById('logFeedback').innerText = '✅ Correct!';
-        startCountdown(5); // 5 seconds if correct
+        startCountdown(5);
       } else {
         document.getElementById('logFeedback').innerText = '❌ Incorrect. See solution and rule below.';
         showLogSolution();
         showLogRule();
-        startCountdown(10); // 10 seconds if incorrect
+        startCountdown(10);
       }
 
       updateScoreDisplay();
@@ -203,7 +223,7 @@
     }
 
     window.onload = () => {
-      updateScoreDisplay();  // ensure 0/0 shows on load
+      updateScoreDisplay();
       generateLogQuestion();
     };
   </script>
