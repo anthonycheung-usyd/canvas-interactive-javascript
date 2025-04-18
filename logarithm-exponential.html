@@ -15,20 +15,139 @@
     };
   </script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js" async></script>
+  <style>
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f2f4f8;
+      color: #333;
+      margin: 2em auto;
+      max-width: 700px;
+      padding: 20px;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 1em;
+      color: #2c3e50;
+    }
+
+    #question {
+      background: #ffffff;
+      padding: 1em;
+      border-left: 4px solid #3498db;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0,0,0,0.05);
+      margin-bottom: 1em;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 0.5em;
+      font-weight: 500;
+    }
+
+    input[type="text"] {
+      padding: 8px 10px;
+      font-size: 1em;
+      width: 100%;
+      max-width: 300px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      margin-top: 0.3em;
+      margin-bottom: 1em;
+    }
+
+    button {
+      padding: 10px 16px;
+      font-size: 1em;
+      margin: 0.3em 0.5em 0.5em 0;
+      color: white;
+      background-color: #3498db;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: background 0.3s ease;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    details {
+      background: #ffffff;
+      border-radius: 6px;
+      box-shadow: 0 1px 5px rgba(0,0,0,0.05);
+      padding: 1em;
+      margin-top: 1.5em;
+      border-left: 4px solid #16a085;
+    }
+
+    summary {
+      font-size: 1.1em;
+      font-weight: 600;
+      color: #16a085;
+    }
+
+    #logFeedback {
+      font-size: 1.1em;
+      margin-top: 1em;
+      padding: 0.8em;
+      border-radius: 4px;
+      font-weight: 600;
+    }
+
+    #logSolution, #logCorrectAnswer, #logRuleHint {
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 0.8em 1em;
+      margin-top: 1em;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+    }
+
+    #scoreDisplay {
+      margin-top: 1em;
+      font-weight: bold;
+      font-size: 1.2em;
+      color: #2c3e50;
+      text-align: center;
+    }
+
+    #countdownTimer {
+      margin-top: 1em;
+      font-style: italic;
+      text-align: center;
+      color: #555;
+    }
+
+    @media (max-width: 600px) {
+      input[type="text"] {
+        width: 100%;
+      }
+    }
+	
+	#logFeedback:empty,
+	#logSolution:empty,
+	#logCorrectAnswer:empty,
+	#logRuleHint:empty {
+	  display: none;
+	}
+
+  </style>
 </head>
 <body>
   <h2>Logarithm and Exponential Practice</h2>
   <p>Rewrite the expression below as a single logarithm or an integer:</p>
-  <div id="question" style="font-weight: bold; font-size: 1.2em;"></div>
+  <div id="question"></div>
 
   <label>Your Answer:
     <input type="text" id="userAnswer" placeholder="e.g., ln(10), exp(3), 2">
   </label>
   <button onclick="checkLogAnswer()">Submit</button>
 
-  <details id="logRulesDetails" open style="margin-top: 1em; font-size: 1em;">
-    <summary style="cursor: pointer; font-weight: bold;">Logarithm Rules</summary>
-    <div id="logRulesContent" style="margin-top: 0.5em;">
+  <details id="logRulesDetails" open>
+    <summary>Logarithm Rules</summary>
+    <div id="logRulesContent">
       \[ \ln(ab) = \ln(a) + \ln(b) \quad \text{(Product Rule)} \]  
       \[ \ln \left(\frac{a}{b}\right) = \ln(a) - \ln(b) \quad \text{(Quotient Rule)} \]  
       \[ \ln(a^n) = n \ln(a) \quad \text{(Power Rule)} \]  
@@ -37,18 +156,18 @@
     </div>
   </details>
 
-  <div id="logFeedback" style="margin-top: 1em;"></div>
-  <div id="logSolution" style="margin-top: 1em; font-size: 1.1em;"></div>
-  <div id="logCorrectAnswer" style="margin-top: 0.5em; font-size: 1em; color: green;"></div>
-  <div id="logRuleHint" style="margin-top: 1em; font-size: 1em; color: #555;"></div>
+  <div id="logFeedback"></div>
+  <div id="logSolution"></div>
+  <div id="logCorrectAnswer"></div>
+  <div id="logRuleHint"></div>
 
-  <div style="margin-top: 1em;">
+  <div>
     <button id="skipButton" style="display: none;" onclick="skipQuestion()">Next Question</button>
     <button id="pauseButton" style="display: none;" onclick="toggleCountdown()">Pause Countdown</button>
   </div>
 
-  <div id="countdownTimer" style="margin-top: 1em; font-style: italic;"></div>
-  <div id="scoreDisplay" style="margin-top: 1em; font-size: 1.1em; font-weight: bold;"></div>
+  <div id="countdownTimer"></div>
+  <div id="scoreDisplay"></div>
 
   <script>
     let currentLogProblem = {};

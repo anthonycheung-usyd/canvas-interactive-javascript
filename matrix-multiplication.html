@@ -5,85 +5,236 @@
   <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
   <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
-    table { border-collapse: collapse; margin: 1em 0; }
-    td { border: 1px solid #888; padding: 5px; text-align: center; }
-    input[type='number'] { width: 3em; text-align: center; }
-    .clickable-cell:hover { background-color: #eef; cursor: pointer; }
+    body {
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+      background-color: #f4f6f8;
+      color: #333;
+      max-width: 960px;
+      margin: auto;
+      padding: 2em;
+    }
+
+    h2 {
+      text-align: center;
+      margin-bottom: 1.5em;
+      color: #2c3e50;
+    }
+
+    label {
+      margin-right: 1em;
+      font-weight: 500;
+    }
+
+    select {
+      padding: 6px 8px;
+      font-size: 1em;
+      border-radius: 4px;
+      border: 1px solid #ccc;
+      margin-top: 0.2em;
+    }
+
+    button {
+      padding: 8px 14px;
+      font-size: 1em;
+      background-color: #3498db;
+      color: #fff;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+      margin-top: 1em;
+      transition: background 0.2s ease-in-out;
+    }
+
+    button:hover {
+      background-color: #2980b9;
+    }
+
+    #matrixLatex {
+      background: #fff;
+      border-radius: 6px;
+      padding: 1em;
+      margin: 1.5em 0;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      font-size: 1.1em;
+    }
+
+    table {
+      border-collapse: collapse;
+    }
+
+    td {
+      border: 1px solid #888;
+      padding: 5px;
+      text-align: center;
+    }
+
+    input[type='number'] {
+      width: 3em;
+      text-align: center;
+      padding: 4px;
+      border-radius: 3px;
+      border: 1px solid #aaa;
+    }
+
+    input[type='radio'] {
+      margin-right: 0.5em;
+    }
+
+    .clickable-cell:hover {
+      background-color: #eef;
+      cursor: pointer;
+    }
+
     .matrix-wrapper {
       display: inline-flex;
       align-items: center;
       font-family: serif;
+      margin: 1em 0;
     }
+
     .matrix-wrapper table {
       margin: 0 0.3em;
     }
+
     .bracket {
       font-size: 2.5em;
       line-height: 1;
       display: flex;
       align-items: center;
     }
+
     .math-label {
       font-family: serif;
       font-size: 1.1em;
       margin-right: 0.3em;
     }
+
     .centered-block {
       display: flex;
       flex-direction: column;
       align-items: center;
     }
+
     .centered-matrix-line {
       display: flex;
       justify-content: center;
       align-items: center;
     }
+
+    #matrixFeedback {
+      font-weight: bold;
+      margin-top: 1em;
+      font-size: 1.1em;
+      display: none;
+    }
+
+    #countdownTimer {
+      font-style: italic;
+      text-align: center;
+      margin-top: 0.5em;
+    }
+
+    #matrixSolution:empty,
+    #explanationArea:empty {
+      display: none;
+    }
+
+    #matrixSolution,
+    #explanationArea {
+      background: #ffffff;
+      border-radius: 6px;
+      padding: 1em;
+      box-shadow: 0 1px 4px rgba(0,0,0,0.05);
+      margin-top: 1em;
+      font-family: serif;
+      font-size: 1.1em;
+    }
+
+    #matrixScore {
+      font-weight: bold;
+      font-size: 1.2em;
+      text-align: center;
+      margin-top: 1em;
+    }
+
+    #sizeSelectors {
+      margin-top: 1em;
+    }
+
+    @media (max-width: 600px) {
+      select, button {
+        width: 100%;
+        margin-top: 0.5em;
+      }
+
+      .matrix-wrapper {
+        flex-direction: column;
+      }
+
+      .matrix-wrapper table {
+        margin: 0.5em 0;
+      }
+    }
   </style>
 </head>
 <body>
-  <h2>Matrix Multiplication: \( AB \)</h2>
+  <h2>Matrix Multiplication Practice</h2>
 
-  <label>Select size of matrix A:
-    <select id="sizeSelectA" onchange="generateMatrices()"></select>
-  </label>
+  <fieldset>
+    <legend><strong>Matrix size mode:</strong></legend>
+    <label><input type="radio" name="mode" value="random" checked onchange="updateMode()"> Generate random sizes</label>
+    <label><input type="radio" name="mode" value="manual" onchange="updateMode()"> I want to choose sizes</label>
+  </fieldset>
 
-  <label style="margin-left: 2em;">Select size of matrix B:
-    <select id="sizeSelectB" onchange="generateMatrices()"></select>
-  </label>
+  <div id="sizeSelectors" style="display: none;">
+    <label>Select size of matrix A:
+      <select id="sizeSelectA" onchange="generateMatrices()"></select>
+    </label>
 
-  <button onclick="regenerateValues()" style="margin-left: 2em;">🔁 Regenerate A and B</button>
+    <label style="margin-left: 2em;">Select size of matrix B:
+      <select id="sizeSelectB" onchange="generateMatrices()"></select>
+    </label>
+  </div>
+
+  <button onclick="regenerateValues()">🔁 Regenerate A and B</button>
 
   <div id="matrixLatex"></div>
 
   <p><strong>Your Answer:</strong></p>
   <div id="studentResponse" class="centered-block"></div>
 
-  <p id="matrixFeedback" style="font-weight: bold;"></p>
-  <div id="countdownTimer" style="font-style: italic;"></div>
-  <div id="matrixSolution" style="margin-top: 1em;"></div>
-  <div id="explanationArea" style="margin-top: 1em; font-family: serif; font-size: 1.1em;"></div>
+  <p id="matrixFeedback"></p>
+  <div id="countdownTimer"></div>
+  <div id="matrixSolution"></div>
+  <div id="explanationArea"></div>
 
   <div style="margin-top: 1em;">
     <button onclick="skipToNext()" id="skipButton" style="display:none;">Next Problem</button>
     <button onclick="toggleCountdown()" id="pauseButton" style="display:none;">Pause Countdown</button>
   </div>
 
-  <p id="matrixScore" style="margin-top: 1em; font-weight: bold;"></p>
+  <p id="matrixScore"></p>
 
   <script>
     const sizeOptions = ["1x1", "1x2", "1x3", "2x1", "2x2", "2x3", "3x1", "3x2", "3x3"];
-    const dropdownOptions = ["random", ...sizeOptions];
     let A, B, C, rowsA, colsA, rowsB, colsB, validAB;
     let score = 0, total = 0;
     let countdownInterval;
     let countdownRemaining = 0;
     let countdownPaused = false;
+    let mode = "random";
+
+    function updateMode() {
+      mode = document.querySelector('input[name="mode"]:checked').value;
+      document.getElementById("sizeSelectors").style.display = mode === "manual" ? "block" : "none";
+      regenerateValues();
+    }
 
     function populateSizeDropdowns() {
       const selectA = document.getElementById("sizeSelectA");
       const selectB = document.getElementById("sizeSelectB");
-      dropdownOptions.forEach(size => {
-        const label = size === "random" ? "Random" : size.replace("x", " × ");
+      sizeOptions.forEach(size => {
+        const label = size.replace("x", " × ");
         selectA.innerHTML += `<option value="${size}">${label}</option>`;
         selectB.innerHTML += `<option value="${size}">${label}</option>`;
       });
@@ -102,18 +253,15 @@
     }
 
     function regenerateValues() {
-      const selectA = document.getElementById("sizeSelectA");
-      const selectB = document.getElementById("sizeSelectB");
-
-      if (selectA.value === "random") {
-        selectA.value = sizeOptions[Math.floor(Math.random() * sizeOptions.length)];
+      if (mode === "random") {
+        const randomA = sizeOptions[Math.floor(Math.random() * sizeOptions.length)];
+        const randomB = sizeOptions[Math.floor(Math.random() * sizeOptions.length)];
+        [rowsA, colsA] = parseSize(randomA);
+        [rowsB, colsB] = parseSize(randomB);
+      } else {
+        [rowsA, colsA] = parseSize(document.getElementById("sizeSelectA").value);
+        [rowsB, colsB] = parseSize(document.getElementById("sizeSelectB").value);
       }
-      if (selectB.value === "random") {
-        selectB.value = sizeOptions[Math.floor(Math.random() * sizeOptions.length)];
-      }
-
-      [rowsA, colsA] = parseSize(selectA.value);
-      [rowsB, colsB] = parseSize(selectB.value);
 
       A = getRandomMatrix(rowsA, colsA);
       B = getRandomMatrix(rowsB, colsB);
@@ -122,7 +270,7 @@
 
       displayMatricesWithMathJax();
       showStudentResponseOptions();
-      document.getElementById("matrixFeedback").innerText = "";
+      document.getElementById("matrixFeedback").style.display = "none";
       document.getElementById("matrixSolution").innerText = "";
       document.getElementById("explanationArea").innerText = "";
       document.getElementById("countdownTimer").innerText = "";
@@ -211,6 +359,8 @@
     function checkMatrixAnswer() {
       total++;
       const value = document.getElementById("studentAnswerType").value;
+      const feedback = document.getElementById("matrixFeedback");
+      feedback.style.display = "block";
       document.getElementById("skipButton").style.display = "inline";
       document.getElementById("pauseButton").style.display = "inline";
       document.getElementById("pauseButton").innerText = "Pause Countdown";
@@ -233,11 +383,11 @@
 
       if (correct) {
         score++;
-        document.getElementById("matrixFeedback").innerText = "✅ Correct!";
+        feedback.innerText = "✅ Correct!";
         updateScore();
         startCountdown(5);
       } else {
-        document.getElementById("matrixFeedback").innerText = "❌ Incorrect.";
+        feedback.innerText = "❌ Incorrect.";
         if (validAB) showMatrixSolutionWithClicks();
         updateScore();
         startCountdown(10);
@@ -316,7 +466,7 @@
 
     window.onload = () => {
       populateSizeDropdowns();
-      generateMatrices();
+      updateMode();
     };
   </script>
 </body>
