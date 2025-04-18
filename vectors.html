@@ -1,0 +1,388 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Vector Geometry Tool</title>
+  <script src="https://polyfill.io/v3/polyfill.min.js?features=es6"></script>
+  <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/build/three.min.js"></script>
+  <script src="https://unpkg.com/three@0.128.0/examples/js/controls/OrbitControls.js"></script>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #f9f9f9; }
+    canvas { border: 1px solid #ccc; background: #f9f9f9; }
+    input[type=number], input[type=range] { width: 60px; margin: 0 4px; }
+    label.slider-label { display: inline-block; width: 20px; }
+    table { margin-bottom: 1em; }
+    th, td { padding: 4px 8px; text-align: center; }
+    #viewer3d { position: relative; width: 600px; height: 450px; border: 1px solid #ccc; margin-top: 1em; display: none; }
+    .zoom-controls {
+      position: absolute;
+      top: 6px;
+      right: 6px;
+      z-index: 10;
+    }
+    .zoom-controls button {
+      width: 30px;
+      height: 30px;
+      font-size: 16px;
+      margin: 2px;
+      border: none;
+      background: #eee;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <h2>Vector Geometry Tool</h2>
+
+  <label>Mode:
+    <select id="mode" onchange="switchMode()">
+      <option value="2D">2D</option>
+      <option value="3D">3D</option>
+    </select>
+  </label>
+
+  <div id="vectorInputs"></div>
+
+  <div id="checkboxes">
+    <label><input type="checkbox" id="showProjection" onchange="compute()"> Show projection of A onto B</label>
+    <label id="showPlaneLabel" style="display: none;"><input type="checkbox" id="showPlane" onchange="compute()"> Show plane containing A and B</label>
+    <label id="crossCheckbox"><input type="checkbox" id="showCross" onchange="compute()"> Show A × B</label>
+  </div>
+
+  <div id="output"></div>
+  <canvas id="viewer2d" width="600" height="450"></canvas>
+
+  <div id="viewer3d">
+    <div class="zoom-controls">
+      <button onclick="zoom(1.1)">+</button>
+      <button onclick="zoom(0.9)">−</button>
+    </div>
+  </div>
+
+  <script>
+    let A = [3, 1, 2], B = [1, 2, -1], dragging = null;
+    let dim = 2;
+    const scale = 40, radius = 10;
+    const origin = { x: 300, y: 225 };
+    const canvas = document.getElementById('viewer2d');
+    const ctx = canvas.getContext('2d');
+    let scene, camera, renderer, controls;
+
+    function switchMode() {
+      dim = document.getElementById("mode").value === "3D" ? 3 : 2;
+      canvas.style.display = dim === 2 ? "block" : "none";
+      document.getElementById("viewer3d").style.display = dim === 3 ? "block" : "none";
+      document.getElementById("showPlaneLabel").style.display = dim === 3 ? "inline" : "none";
+      document.getElementById("crossCheckbox").style.display = dim === 3 ? "inline" : "none";
+      buildInputs();
+      if (dim === 3 && !scene) init3D();
+      compute();
+    }
+
+    function buildInputs() {
+      const axes = ['x', 'y', 'z'];
+      const container = document.getElementById("vectorInputs");
+      let html = `<table><tr><th></th>`;
+      for (let i = 0; i < dim; i++) html += `<th>${axes[i]}</th>`;
+      html += `</tr>`;
+      ['A', 'B'].forEach(vec => {
+        html += `<tr><td>Vector ${vec}</td>`;
+        for (let i = 0; i < dim; i++) {
+          const id = `${vec.toLowerCase()}${axes[i]}`;
+          const val = (vec === 'A' ? A : B)[i];
+          html += `<td>
+            <input type="number" step="0.1" id="${id}" value="${val}" oninput="updateVec('${vec}', ${i})">
+            <input type="range" step="0.1" min="-10" max="10" id="${id}Slider" value="${val}" oninput="updateVecSlider('${vec}', ${i})">
+          </td>`;
+        }
+        html += `</tr>`;
+      });
+      html += `</table>`;
+      container.innerHTML = html;
+    }
+
+    function updateVec(vec, i) {
+      const id = `${vec.toLowerCase()}${['x','y','z'][i]}`;
+      const val = parseFloat(document.getElementById(id).value);
+      document.getElementById(`${id}Slider`).value = val;
+      if (vec === 'A') { while (A.length <= i) A.push(0); A[i] = val; }
+      else { while (B.length <= i) B.push(0); B[i] = val; }
+      compute();
+    }
+
+    function updateVecSlider(vec, i) {
+      const id = `${vec.toLowerCase()}${['x','y','z'][i]}Slider`;
+      const val = parseFloat(document.getElementById(id).value);
+      document.getElementById(id.replace('Slider', '')).value = val;
+      if (vec === 'A') { while (A.length <= i) A.push(0); A[i] = val; }
+      else { while (B.length <= i) B.push(0); B[i] = val; }
+      compute();
+    }
+
+    function dot(a,b) { return a.reduce((s, ai, i) => s + ai*b[i], 0); }
+    function magnitude(v) { return Math.sqrt(v.reduce((s,x) => s + x*x, 0)); }
+    function unit(v) { const m = magnitude(v); return v.map(x => x/m); }
+    function project(a,b) { const s = dot(a,b)/dot(b,b); return b.map(x => x*s); }
+    function cross(a,b) {
+      return [
+        a[1]*b[2] - a[2]*b[1],
+        a[2]*b[0] - a[0]*b[2],
+        a[0]*b[1] - a[1]*b[0]
+      ];
+    }
+    function angleBetween(a,b) {
+      const cos = dot(a,b) / (magnitude(a) * magnitude(b));
+      return Math.acos(Math.max(-1, Math.min(1, cos)));
+    }
+
+    function compute() {
+      const a = A.slice(0, dim), b = B.slice(0, dim);
+      const magA = magnitude(a).toFixed(2);
+      const magB = magnitude(b).toFixed(2);
+      const dotVal = dot(a,b).toFixed(2);
+      const theta = angleBetween(a,b);
+      const deg = (theta * 180 / Math.PI).toFixed(2);
+      let out = '';
+      out += `\\[ |\\vec{a}| = \\sqrt{${a.map(x => `(${x})^2`).join(" + ")}} = ${magA} \\]`;
+      out += `\\[ |\\vec{b}| = \\sqrt{${b.map(x => `(${x})^2`).join(" + ")}} = ${magB} \\]`;
+      out += `\\[ \\vec{a} \\cdot \\vec{b} = ${a.map((ai,i)=>`(${ai})(${b[i]})`).join(" + ")} = ${dotVal} \\]`;
+      out += `\\[ \\theta = \\cos^{-1} \\left( \\frac{${dotVal}}{${magA} \\cdot ${magB}} \\right) = ${theta.toFixed(2)}\\text{ rad} = ${deg}^\\circ \\]`;
+      if (document.getElementById("showProjection").checked) {
+        const p = project(a,b).map(x => x.toFixed(2));
+        out += `\\[ \\text{proj}_{\\vec{b}} \\vec{a} = [${p.join(', ')}] \\]`;
+      }
+      if (dim === 3 && document.getElementById("showCross").checked) {
+        const c = cross(a,b).map(x => x.toFixed(2));
+        out += `\\[ \\vec{a} \\times \\vec{b} = [${c.join(', ')}] \\]`;
+      }
+      document.getElementById("output").innerHTML = out;
+      MathJax.typeset();
+      if (dim === 2) draw2D(); else draw3D();
+    }
+
+    function draw2D() {
+	  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+	  const a = A.slice(0, 2);
+	  const b = B.slice(0, 2);
+	  const proj = project(a, b);
+	  const orth = a.map((ai, i) => ai - proj[i]);
+
+	  drawArrow(a, 'blue', 'A');
+	  drawArrow(b, 'red', 'B');
+
+	  if (document.getElementById("showProjection").checked) {
+		drawArrow(proj, 'green', 'proj(A)', false);  // from origin
+		drawArrow(orth, 'green', 'A - proj(A)', true, proj);  // from tip of proj
+	  }
+
+	  drawAngleArc(a, b);
+	}
+
+    function drawArrow(v, color, label, dashed = false, base = [0, 0]) {
+	  const start = { x: origin.x + base[0]*scale, y: origin.y - base[1]*scale };
+	  const end = { x: start.x + v[0]*scale, y: start.y - v[1]*scale };
+	  const dx = end.x - start.x;
+	  const dy = end.y - start.y;
+	  const len = Math.sqrt(dx*dx + dy*dy);
+
+	  const arrowHeadLength = 10;
+	  const arrowHeadAngle = Math.PI / 8;
+	  const angle = Math.atan2(dy, dx);
+
+	  ctx.font = '16px serif';
+	  ctx.beginPath();
+	  if (dashed) ctx.setLineDash([5,5]);
+	  ctx.moveTo(start.x, start.y);
+	  ctx.lineTo(end.x, end.y);
+	  ctx.strokeStyle = color;
+	  ctx.lineWidth = 2;
+	  ctx.stroke();
+	  ctx.setLineDash([]);
+
+	  ctx.beginPath();
+	  ctx.moveTo(end.x, end.y);
+	  ctx.lineTo(
+		end.x - arrowHeadLength * Math.cos(angle - arrowHeadAngle),
+		end.y - arrowHeadLength * Math.sin(angle - arrowHeadAngle)
+	  );
+	  ctx.lineTo(
+		end.x - arrowHeadLength * Math.cos(angle + arrowHeadAngle),
+		end.y - arrowHeadLength * Math.sin(angle + arrowHeadAngle)
+	  );
+	  ctx.lineTo(end.x, end.y);
+	  ctx.fillStyle = color;
+	  ctx.fill();
+
+	  ctx.fillText(label, end.x + 6, end.y + 6);
+	}
+
+    function drawAngleArc(a, b) {
+      const ua = unit(a), ub = unit(b);
+      let angleA = Math.atan2(-ua[1], ua[0]);
+      let angleB = Math.atan2(-ub[1], ub[0]);
+      let diff = angleB - angleA;
+      if (diff <= -Math.PI) diff += 2*Math.PI;
+      if (diff > Math.PI) diff -= 2*Math.PI;
+      const start = angleA;
+      const end = angleA + diff;
+      const arcRadius = 30;
+      ctx.beginPath();
+      ctx.arc(origin.x, origin.y, arcRadius, start, end, diff < 0);
+      ctx.strokeStyle = 'green';
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      const midAngle = start + diff / 2;
+      const labelX = origin.x + (arcRadius + 10) * Math.cos(midAngle);
+      const labelY = origin.y + (arcRadius + 10) * Math.sin(midAngle);
+      ctx.fillStyle = 'green';
+      ctx.font = '16px serif';
+      ctx.fillText('θ', labelX, labelY);
+    }
+
+    function getMousePos(e) {
+      const rect = canvas.getBoundingClientRect();
+      return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+
+    function distance(p1, p2) {
+      return Math.sqrt((p1.x - p2.x)**2 + (p1.y - p2.y)**2);
+    }
+
+    canvas.addEventListener('mousedown', (e) => {
+      const pos = getMousePos(e);
+      const aEnd = { x: origin.x + A[0]*scale, y: origin.y - A[1]*scale };
+      const bEnd = { x: origin.x + B[0]*scale, y: origin.y - B[1]*scale };
+      if (distance(pos, aEnd) < radius) dragging = 'A';
+      else if (distance(pos, bEnd) < radius) dragging = 'B';
+    });
+
+    canvas.addEventListener('mousemove', (e) => {
+      if (!dragging || dim !== 2) return;
+      const pos = getMousePos(e);
+      const vec = [(pos.x - origin.x)/scale, (origin.y - pos.y)/scale];
+      if (dragging === 'A') A = [...vec, A[2]];
+      else B = [...vec, B[2]];
+      buildInputs();
+      compute();
+    });
+
+    canvas.addEventListener('mouseup', () => dragging = null);
+
+    function init3D() {
+      scene = new THREE.Scene();
+      camera = new THREE.PerspectiveCamera(75, 600/450, 0.1, 1000);
+      renderer = new THREE.WebGLRenderer({ antialias: true });
+      renderer.setSize(600, 450);
+      renderer.setClearColor(0xf9f9f9);
+      document.getElementById("viewer3d").appendChild(renderer.domElement);
+      controls = new THREE.OrbitControls(camera, renderer.domElement);
+      camera.position.set(5, 5, 5);
+      controls.update();
+      animate();
+    }
+
+    function draw3D() {
+	  while (scene.children.length) scene.remove(scene.children[0]);
+	  drawArrow3D([5,0,0], 0x000000, "x-axis");
+	  drawArrow3D([0,5,0], 0x000000, "y-axis");
+	  drawArrow3D([0,0,5], 0x000000, "z-axis");
+	  drawArrow3D(A, 0x0000ff, "A");
+	  drawArrow3D(B, 0xff0000, "B");
+
+	  if (document.getElementById("showProjection").checked) {
+		const proj = project(A, B);
+		const orth = A.map((ai, i) => ai - proj[i]);
+		drawArrow3D(proj, 0x00aa00, "proj(A)", false);                    // solid from origin
+		drawArrow3D(orth, 0x00aa00, "A - proj(A)", true, proj);          // dotted from proj head
+	  }
+
+	  if (document.getElementById("showCross").checked)
+		drawArrow3D(cross(A, B), 0xff9900, "A×B");
+
+	  if (document.getElementById("showPlane").checked) {
+		const a = new THREE.Vector3(...A);
+		const b = new THREE.Vector3(...B);
+		const normal = new THREE.Vector3().crossVectors(a, b).normalize();
+		const center = new THREE.Vector3(0, 0, 0);
+		const size = 5;
+
+		const planeGeometry = new THREE.PlaneGeometry(size, size);
+		const planeMaterial = new THREE.MeshBasicMaterial({
+		  color: 0x88ccff,
+		  side: THREE.DoubleSide,
+		  transparent: true,
+		  opacity: 0.5
+		});
+		const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+
+		const zAxis = new THREE.Vector3(0, 0, 1);
+		const quaternion = new THREE.Quaternion().setFromUnitVectors(zAxis, normal);
+		plane.setRotationFromQuaternion(quaternion);
+		plane.position.copy(center);
+		scene.add(plane);
+	  }
+	}
+
+    function drawArrow3D(vec, color, label, dashed = false, base = [0, 0, 0]) {
+	  const origin = new THREE.Vector3(...base);
+	  const end = new THREE.Vector3(...vec).add(origin); // FIXED LINE
+	  const dir = new THREE.Vector3().subVectors(end, origin).normalize();
+	  const len = new THREE.Vector3().subVectors(end, origin).length();
+
+	  if (dashed) {
+		const geometry = new THREE.BufferGeometry().setFromPoints([origin, end]);
+		const material = new THREE.LineDashedMaterial({ color, dashSize: 0.2, gapSize: 0.1, linewidth: 1 });
+		const line = new THREE.Line(geometry, material);
+		line.computeLineDistances();
+		scene.add(line);
+
+		const head = new THREE.ArrowHelper(dir, end.clone().addScaledVector(dir, -0.4), 0.4, color, 0.4, 0.2);
+		scene.add(head);
+	  } else {
+		const arrow = new THREE.ArrowHelper(dir, origin, len, color, 0.4, 0.2);
+		scene.add(arrow);
+	  }
+
+	  const labelSprite = makeTextSprite(label, color, 0.6);
+	  labelSprite.position.copy(end.clone().addScaledVector(dir, 0.3));
+	  scene.add(labelSprite);
+	}
+
+    function makeTextSprite(message, color = 0x000000, scale = 0.6) {
+      const canvas = document.createElement('canvas');
+      canvas.width = 180;
+      canvas.height = 40;
+      const ctx = canvas.getContext('2d');
+      ctx.fillStyle = "rgba(255,255,255,0.85)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.font = "20px Arial";
+      ctx.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+      ctx.textAlign = "center";
+      ctx.textBaseline = "middle";
+      ctx.fillText(message, canvas.width / 2, canvas.height / 2);
+      const texture = new THREE.CanvasTexture(canvas);
+      const material = new THREE.SpriteMaterial({ map: texture, transparent: true });
+      const sprite = new THREE.Sprite(material);
+      sprite.scale.set(scale * 2.2, scale * 0.75, 1);
+      return sprite;
+    }
+
+    function zoom(factor) {
+      if (camera) {
+        camera.zoom *= factor;
+        camera.updateProjectionMatrix();
+      }
+    }
+
+    function animate() {
+      requestAnimationFrame(animate);
+      controls.update();
+      renderer.render(scene, camera);
+    }
+
+    window.onload = switchMode;
+  </script>
+</body>
+</html>
