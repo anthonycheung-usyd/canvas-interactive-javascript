@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Spectral Peak Derivative Tool</title>
+  <style>
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      margin: 2rem;
+      background: #f9f9fb;
+      color: #333;
+    }
+    .container {
+      max-width: 1000px;
+      margin: auto;
+      background: white;
+      padding: 2rem;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.1);
+    }
+    h1 {
+      color: #004080;
+      margin-bottom: 1rem;
+    }
+    .plot-area {
+      position: relative;
+    }
+    .controls {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1rem;
+      margin-bottom: 1rem;
+      align-items: center;
+    }
+    label {
+      font-weight: bold;
+    }
+    input[type='range'] {
+      width: 200px;
+    }
+    .note {
+      font-size: 0.9rem;
+      color: #555;
+      margin-top: 1rem;
+    }
+    .regen-button {
+      padding: 0.4rem 0.8rem;
+      background-color: #007B8A;
+      color: white;
+      border: none;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+    .regen-button:hover {
+      background-color: #0095a8;
+    }
+  </style>
+  <!-- Plotly for interactive zoom/pan/etc -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+</head>
+<body>
+  <div class="container">
+    <h1>Spectral Peak Derivative Tool</h1>
+    <p>This tool simulates a synthetic absorbance spectrum and overlays its first and second derivatives to help visualize peaks and inflection points.</p>
+
+    <div class="controls">
+      <div>
+        <label for="numPeaks">Number of Peaks:</label><br/>
+        <input type="range" id="numPeaks" min="1" max="5" value="2" oninput="updateSliders(); generateAndPlot();"/>
+        <span id="numPeaksVal">2</span>
+      </div>
+      <div>
+        <label for="noiseLevel">Noise Level:</label><br/>
+        <input type="range" id="noiseLevel" min="0" max="0.1" step="0.01" value="0.02" oninput="updateSliders(); generateAndPlot();"/>
+        <span id="noiseVal">0.02</span>
+      </div>
+      <button class="regen-button" onclick="generateAndPlot()">Regenerate Curve</button>
+    </div>
+
+    <div class="plot-area">
+      <!-- Plotly renders into a div, not canvas -->
+      <div id="spectrumPlot" style="width:100%;height:400px;"></div>
+    </div>
+
+    <p class="note">Use this tool to visually correlate absorbance peaks with maxima in the first derivative and inflection points using the second derivative.</p>
+  </div>
+
+  <script>
+    // Gaussian generator & synthetic spectrum
+    function gaussian(x, mu, sigma, A) {
+      return A * Math.exp(-Math.pow(x - mu, 2) / (2 * sigma * sigma));
+    }
+
+    function generateSpectrum(numPeaks, noise) {
+      const x = Array.from({ length: 200 }, (_, i) => 200 + i);
+      let y = Array(x.length).fill(0);
+      for (let i = 0; i < numPeaks; i++) {
+        const center = 220 + Math.random() * 160;
+        const width = 10 + Math.random() * 20;
+        const height = 0.5 + Math.random();
+        for (let j = 0; j < x.length; j++) {
+          y[j] += gaussian(x[j], center, width, height);
+        }
+      }
+      return {
+        x,
+        y: y.map(val => val + (Math.random() - 0.5) * noise)
+      };
+    }
+
+    // central-difference first & second derivs
+    function computeDerivative(y, x) {
+      const first = [], second = [];
+      for (let i = 1; i < y.length - 1; i++) {
+        const dx = x[i+1] - x[i-1];
+        first.push((y[i+1] - y[i-1]) / dx);
+        second.push((y[i+1] - 2*y[i] + y[i-1]) / ((dx/2)**2));
+      }
+      // pad to match length
+      return {
+        first: [null, ...first, null],
+        second: [null, ...second, null]
+      };
+    }
+
+    function updateSliders() {
+      document.getElementById('numPeaksVal').textContent =
+        document.getElementById('numPeaks').value;
+      document.getElementById('noiseVal').textContent =
+        parseFloat(document.getElementById('noiseLevel').value).toFixed(2);
+    }
+
+    function generateAndPlot() {
+      const numPeaks = parseInt(document.getElementById('numPeaks').value);
+      const noise    = parseFloat(document.getElementById('noiseLevel').value);
+      updateSliders();
+
+      const { x, y } = generateSpectrum(numPeaks, noise);
+      const { first, second } = computeDerivative(y, x);
+
+      const traceAbs = {
+        x, y,
+        mode: 'lines',
+        name: 'Absorbance',
+        line: { color: '#004080', width: 2 }
+      };
+      const trace1 = {
+        x, y: first,
+        mode: 'lines',
+        name: '1st Derivative',
+        line: { dash: 'dashdot', width: 1.5 }
+      };
+      const trace2 = {
+        x, y: second,
+        mode: 'lines',
+        name: '2nd Derivative',
+        line: { dash: 'dot', width: 1.5 }
+      };
+
+      const layout = {
+        title: 'Synthetic Absorbance & Derivatives',
+        xaxis: { title: 'Wavelength (nm)' },
+        yaxis: { title: 'Intensity' },
+        hovermode: 'closest'
+      };
+
+      // `config` controls the modebar buttons
+      const config = {
+        responsive: true,
+        modeBarButtonsToRemove: [
+          // you can remove any you don't need, e.g. 'toImage' or 'lasso2d'
+        ]
+      };
+
+      Plotly.newPlot('spectrumPlot', [traceAbs, trace1, trace2], layout, config);
+    }
+
+    // initial plot
+    generateAndPlot();
+  </script>
+</body>
+</html>
