@@ -8,13 +8,17 @@
     body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
     .container { max-width: 800px; margin: 0 auto; background: #fff; padding: 20px; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
     input[type="text"], textarea { width: 60%; padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
+    input[type="number"] { width: 80px; padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
     textarea { display: none; height: 2.5em; }
+    input[type="range"] { vertical-align: middle; }
     label { margin-right: 15px; font-size: 1em; }
     button { padding: 10px 16px; font-size: 1em; border: none; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; }
     button:hover { background: #0056b3; }
     #plot { width: 100%; height: 500px; margin-top: 20px; }
     #equation { margin-top: 10px; font-size: 1.1em; text-align: center; }
     #tangentInfo { margin-top: 10px; font-weight: bold; font-size: 1.1em; text-align: center; }
+    .domain-control { margin-top: 15px; }
+    .domain-control label { margin-right: 5px; }
   </style>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.js"></script>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -35,6 +39,15 @@
       <label><input type="checkbox" id="firstDerivative"> Plot f'(x)</label>
       <label><input type="checkbox" id="secondDerivative"> Plot f''(x)</label>
       <label><input type="checkbox" id="tangentLine"> Show tangent line on hover</label>
+    </div>
+    <!-- Domain controls -->
+    <div class="domain-control">
+      <label for="domainMinSlider">Domain Min:</label>
+      <input type="range" id="domainMinSlider" min="-100" max="100" step="0.1" value="-10" />
+      <input type="number" id="domainMinInput" min="-100" max="100" step="0.1" value="-10" />
+      <label for="domainMaxSlider">Domain Max:</label>
+      <input type="range" id="domainMaxSlider" min="-100" max="100" step="0.1" value="10" />
+      <input type="number" id="domainMaxInput" min="-100" max="100" step="0.1" value="10" />
     </div>
     <div style="margin-top:15px;">
       <button id="plotButton">Plot Function</button>
@@ -58,6 +71,30 @@
     const equationDiv = document.getElementById('equation');
     const tangentInfo = document.getElementById('tangentInfo');
 
+    // domain controls
+    const domainMinSlider = document.getElementById('domainMinSlider');
+    const domainMinInput = document.getElementById('domainMinInput');
+    const domainMaxSlider = document.getElementById('domainMaxSlider');
+    const domainMaxInput = document.getElementById('domainMaxInput');
+
+    // sync and update plot instantly
+    domainMinSlider.addEventListener('input', () => {
+      domainMinInput.value = domainMinSlider.value;
+      if (lastRawInput && parseAndCompute()) renderPlot();
+    });
+    domainMinInput.addEventListener('change', () => {
+      domainMinSlider.value = domainMinInput.value;
+      if (lastRawInput && parseAndCompute()) renderPlot();
+    });
+    domainMaxSlider.addEventListener('input', () => {
+      domainMaxInput.value = domainMaxSlider.value;
+      if (lastRawInput && parseAndCompute()) renderPlot();
+    });
+    domainMaxInput.addEventListener('change', () => {
+      domainMaxSlider.value = domainMaxInput.value;
+      if (lastRawInput && parseAndCompute()) renderPlot();
+    });
+
     useLatexCb.addEventListener('change', () => {
       const show = useLatexCb.checked;
       funcInput.style.display = show ? 'none' : 'inline-block';
@@ -68,6 +105,9 @@
       const raw = useLatexCb.checked ? latexInput.value : funcInput.value;
       if (!raw) { alert('Enter a function.'); return false; }
       const expr = raw.replace(/\\([a-zA-Z]+)/g, '$1').replace(/[{}]/g, '');
+      let domainMin = parseFloat(domainMinInput.value);
+      let domainMax = parseFloat(domainMaxInput.value);
+      if (domainMin >= domainMax) { alert('Domain minimum must be less than maximum.'); return false; }
       try {
         compiled.f = math.parse(expr).compile();
         compiled.f1 = math.derivative(expr, 'x').compile();
@@ -76,7 +116,8 @@
         alert('Parse error: ' + e);
         return false;
       }
-      xValues = math.range(-10, 10, 0.1, true).toArray();
+      const step = 0.1;
+      xValues = math.range(domainMin, domainMax, step, true).toArray();
       yValues = xValues.map(x => compiled.f.evaluate({x}));
       slopeValues = xValues.map(x => compiled.f1.evaluate({x}));
       secondValues = xValues.map(x => compiled.f2.evaluate({x}));
@@ -87,14 +128,9 @@
     }
 
     function renderPlot() {
-      const latexExpr = useLatexCb.checked
-        ? lastRawInput
-        : math.parse(lastExpr).toTex();
-
-      // display equation under button
+      const latexExpr = useLatexCb.checked ? lastRawInput : math.parse(lastExpr).toTex();
       equationDiv.innerHTML = `\\(y = ${latexExpr}\\)`;
       if (window.MathJax) MathJax.typesetPromise([equationDiv]);
-
       const traces = [
         { x: xValues, y: yValues, mode: 'lines', name: 'f(x)' },
         { x: xValues, y: slopeValues, mode: 'lines', name: "f'(x)", visible: firstCb.checked ? true : 'legendonly' },
@@ -103,14 +139,7 @@
       const layout = {
         title: 'Function and Derivatives',
         xaxis: { title: 'x' },
-        yaxis: { title: 'y', zeroline: true },
-        annotations: [{
-          text: `\\(y = ${latexExpr}\\)`,
-          xref: 'paper', x: 0.5,
-          yref: 'paper', y: 1.05,
-          showarrow: false,
-          xanchor: 'center'
-        }]
+        yaxis: { title: 'y', zeroline: true }
       };
       Plotly.newPlot('plot', traces, layout, {responsive: true});
       if (window.MathJax) MathJax.typesetPromise();
@@ -121,29 +150,20 @@
       const plotEl = document.getElementById('plot');
       firstCb.addEventListener('change', () => Plotly.restyle(plotEl, 'visible', firstCb.checked ? true : 'legendonly', [1]));
       secondCb.addEventListener('change', () => Plotly.restyle(plotEl, 'visible', secondCb.checked ? true : 'legendonly', [2]));
-
       plotEl.on('plotly_hover', event => {
         if (!tangentCb.checked) return;
         const x0 = event.points[0].x;
-        const idx = Math.round((x0 + 10) / 0.1);
-        const y0 = yValues[idx];
-        const slope = slopeValues[idx];
-        const dx = 2;
-        const x1 = x0 - dx, y1 = slope * (x1 - x0) + y0;
-        const x2 = x0 + dx, y2 = slope * (x2 - x0) + y0;
-        Plotly.relayout(plotEl, { shapes: [{ type: 'line', x0: x1, y0: y1, x1: x2, y1: y2, line: { dash: 'dash' } }] });
-
-        const intercept = y0 - slope * x0;
-        const sign = intercept >= 0 ? '+' : '-';
-        const absInt = Math.abs(intercept).toFixed(2);
+        const idx = Math.round((x0 - parseFloat(domainMinInput.value)) / 0.1);
+        const y0 = yValues[idx]; const slope = slopeValues[idx];
+        const dx = (parseFloat(domainMaxInput.value)-parseFloat(domainMinInput.value))/20;
+        const x1 = x0 - dx, y1 = slope*(x1-x0)+y0;
+        const x2 = x0 + dx, y2 = slope*(x2-x0)+y0;
+        Plotly.relayout(plotEl, {shapes:[{type:'line',x0:x1,y0:y1,x1:x2,y1:y2,line:{dash:'dash'}}]});
+        const intercept = y0 - slope*x0; const sign = intercept>=0?'+':'-'; const absInt = Math.abs(intercept).toFixed(2);
         tangentInfo.innerHTML = `At \\(x=${x0.toFixed(2)}\\), the tangent to \\(y=f(x)\\) is \\(y = ${slope.toFixed(2)}x ${sign} ${absInt}\\)`;
-        if (window.MathJax) MathJax.typesetPromise([tangentInfo]);
+        if(window.MathJax)MathJax.typesetPromise([tangentInfo]);
       });
-
-      plotEl.on('plotly_unhover', () => {
-        Plotly.relayout(plotEl, { shapes: [] });
-        tangentInfo.innerHTML = '';
-      });
+      plotEl.on('plotly_unhover', () => {Plotly.relayout(plotEl,{shapes:[]}); tangentInfo.innerHTML='';});
     }
 
     document.getElementById('plotButton').addEventListener('click', () => {
