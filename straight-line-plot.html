@@ -5,33 +5,14 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Interactive Line Plot with Plotly</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      text-align: center;
-      margin: 20px;
-    }
-    #controls {
-      margin-bottom: 20px;
-    }
-    .control-line {
-      margin-bottom: 10px;
-    }
-    .control {
-      display: inline-block;
-      margin: 0 15px;
-    }
-    .control label {
-      margin-right: 5px;
-    }
-    #equation {
-      font-size: 1.5em;
-      margin-bottom: 20px;
-    }
-    #plot {
-      width: 600px;
-      height: 600px;
-      margin: 0 auto;
-    }
+    body { font-family: Arial, sans-serif; text-align: center; margin: 20px; }
+    #controls { margin-bottom: 20px; }
+    .control-line { margin-bottom: 10px; }
+    .control { display: inline-block; margin: 0 15px; }
+    .control label { margin-right: 5px; }
+    #equations { font-size: 1.2em; margin-bottom: 20px; }
+    #equations > div { margin: 5px 0; }
+    #plot { width: 600px; height: 600px; margin: 0 auto; }
   </style>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
@@ -39,130 +20,131 @@
 <body>
   <h1>Interactive Line Plot</h1>
   <div id="controls">
+    <!-- Domain controls -->
+    <div class="control-line"><strong>Domain:</strong></div>
     <div class="control-line">
       <div class="control">
-        <label for="mRange">Slope (m):</label>
-        <input type="range" id="mRange" min="-10" max="10" step="0.1" value="2">
-        <input type="number" id="mInput" min="-10" max="10" step="0.1" value="2">
-      </div>
-      <div class="control">
-        <label for="cRange">Intercept (c):</label>
-        <input type="range" id="cRange" min="-10" max="10" step="0.1" value="3">
-        <input type="number" id="cInput" min="-10" max="10" step="0.1" value="3">
-      </div>
-    </div>
-    <div class="control-line">
-      <div class="control">
-        <label for="xMinRange">x‑Min:</label>
+        <label for="xMinRange">\(x_{\min}\):</label>
         <input type="range" id="xMinRange" min="-50" max="0" step="0.1" value="-10">
         <input type="number" id="xMinInput" min="-50" max="0" step="0.1" value="-10">
       </div>
       <div class="control">
-        <label for="xMaxRange">x‑Max:</label>
+        <label for="xMaxRange">\(x_{\max}\):</label>
         <input type="range" id="xMaxRange" min="0" max="50" step="0.1" value="10">
         <input type="number" id="xMaxInput" min="0" max="50" step="0.1" value="10">
       </div>
     </div>
+    <!-- Line 1 controls -->
+    <div class="control-line"><strong>Line 1:</strong></div>
     <div class="control-line">
-      <button id="resetBtn">Reset</button>
+      <div class="control">
+        <label for="mRange">Slope (\(m_1\)):</label>
+        <input type="range" id="mRange" min="-10" max="10" step="0.1" value="2">
+        <input type="number" id="mInput" min="-10" max="10" step="0.1" value="2">
+      </div>
+      <div class="control">
+        <label for="cRange">Intercept (\(c_1\)):</label>
+        <input type="range" id="cRange" min="-10" max="10" step="0.1" value="3">
+        <input type="number" id="cInput" min="-10" max="10" step="0.1" value="3">
+      </div>
     </div>
+    <!-- Toggle second line -->
+    <div class="control-line">
+      <div class="control">
+        <input type="checkbox" id="enableSecond">
+        <label for="enableSecond">Plot second line</label>
+      </div>
+    </div>
+    <!-- Line 2 controls -->
+    <div class="control-line" id="secondControls" style="display:none">
+      <div class="control-line"><strong>Line 2:</strong></div>
+      <div class="control">
+        <label for="mRange2">Slope (\(m_2\)):</label>
+        <input type="range" id="mRange2" min="-10" max="10" step="0.1" value="1">
+        <input type="number" id="mInput2" min="-10" max="10" step="0.1" value="1">
+      </div>
+      <div class="control">
+        <label for="cRange2">Intercept (\(c_2\)):</label>
+        <input type="range" id="cRange2" min="-10" max="10" step="0.1" value="0">
+        <input type="number" id="cInput2" min="-10" max="10" step="0.1" value="0">
+      </div>
+    </div>
+    <div class="control-line"><button id="resetBtn">Reset</button></div>
   </div>
-  <div id="equation">\(y = 2.00x + 3.00\)</div>
+  <div id="equations">
+    <div id="equation1">\(y = 2.00x + 3.00\)</div>
+    <div id="equation2" style="display:none">\(y = 1.00x + 0.00\)</div>
+    <div id="intersection" style="display:none"></div>
+  </div>
   <div id="plot"></div>
 
   <script>
-    // References to controls
-    const mRange = document.getElementById('mRange');
-    const mInput = document.getElementById('mInput');
-    const cRange = document.getElementById('cRange');
-    const cInput = document.getElementById('cInput');
-    const xMinRange = document.getElementById('xMinRange');
-    const xMinInput = document.getElementById('xMinInput');
-    const xMaxRange = document.getElementById('xMaxRange');
-    const xMaxInput = document.getElementById('xMaxInput');
-    const resetBtn = document.getElementById('resetBtn');
+    // References
+    const mRange = document.getElementById('mRange'), mInput = document.getElementById('mInput');
+    const cRange = document.getElementById('cRange'), cInput = document.getElementById('cInput');
+    const xMinRange = document.getElementById('xMinRange'), xMinInput = document.getElementById('xMinInput');
+    const xMaxRange = document.getElementById('xMaxRange'), xMaxInput = document.getElementById('xMaxInput');
+    const enableSecond = document.getElementById('enableSecond'), secondControls = document.getElementById('secondControls');
+    const mRange2 = document.getElementById('mRange2'), mInput2 = document.getElementById('mInput2');
+    const cRange2 = document.getElementById('cRange2'), cInput2 = document.getElementById('cInput2');
+    const eq1El = document.getElementById('equation1'), eq2El = document.getElementById('equation2');
+    const intersectionEl = document.getElementById('intersection'), resetBtn = document.getElementById('resetBtn');
 
-    // Utility to sync a slider and number input
+    // Sync controls
     function sync(rangeEl, inputEl) {
-      rangeEl.addEventListener('input', updatePlot);
-      inputEl.addEventListener('input', e => {
-        const val = parseFloat(e.target.value);
-        if (!isNaN(val)) {
-          rangeEl.value = val;
-          updatePlot();
-        }
-      });
+      rangeEl.addEventListener('input', () => { inputEl.value = rangeEl.value; updatePlot(); });
+      inputEl.addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { rangeEl.value = v; updatePlot(); } });
     }
-    sync(mRange, mInput);
-    sync(cRange, cInput);
-    sync(xMinRange, xMinInput);
-    sync(xMaxRange, xMaxInput);
+    [[mRange,mInput],[cRange,cInput],[xMinRange,xMinInput],[xMaxRange,xMaxInput],[mRange2,mInput2],[cRange2,cInput2]].forEach(pair => sync(pair[0], pair[1]));
 
-    // Reset button handler
-    resetBtn.addEventListener('click', () => {
-      mRange.value = 2; mInput.value = 2;
-      cRange.value = 3; cInput.value = 3;
-      xMinRange.value = -10; xMinInput.value = -10;
-      xMaxRange.value = 10; xMaxInput.value = 10;
-      updatePlot();
-    });
+    // Traces and layout
+    const trace1 = { x: [], y: [], mode: 'lines', name: 'Line 1', line: { color: 'red' } };
+    const trace2 = { x: [], y: [], mode: 'lines', name: 'Line 2', line: { color: 'blue' } };
+    const intersectionMarker = { x: [], y: [], mode: 'markers', name: 'Intersection', marker: { size: 8, color: 'green' }, hoverinfo: 'skip' };
+    const layout = { xaxis: { zeroline: true, showgrid: true, dtick: 1 }, yaxis: { zeroline: true, showgrid: true, dtick: 1 }, margin: { l: 40, r: 20, b: 40, t: 40 }, hovermode: 'closest' };
 
-    // Initial trace
-    const trace = {
-      x: [],
-      y: [],
-      mode: 'lines',
-      line: { color: 'red' },
-      hovertemplate: '(%{x:.2f}, %{y:.2f})<extra></extra>'
-    };
+    // Checkbox and reset
+    enableSecond.addEventListener('change', () => { secondControls.style.display = enableSecond.checked ? 'block' : 'none'; eq2El.style.display = enableSecond.checked ? 'block' : 'none'; intersectionEl.style.display = enableSecond.checked ? 'block' : 'none'; updatePlot(); });
+    resetBtn.addEventListener('click', () => { mRange.value = 2; mInput.value = 2; cRange.value = 3; cInput.value = 3; xMinRange.value = -10; xMinInput.value = -10; xMaxRange.value = 10; xMaxInput.value = 10; enableSecond.checked = false; secondControls.style.display = 'none'; eq2El.style.display = 'none'; intersectionEl.style.display = 'none'; mRange2.value = 1; mInput2.value = 1; cRange2.value = 0; cInput2.value = 0; updatePlot(); });
 
-    const layout = {
-      xaxis: { range: [-10, 10], zeroline: true, showgrid: true, dtick: 1 },
-      yaxis: { range: [-10, 10], zeroline: true, showgrid: true, dtick: 1 },
-      margin: { l: 40, r: 20, b: 40, t: 40 },
-      hovermode: 'closest'
-    };
+    // Initial plot
+    Plotly.newPlot('plot', [trace1], layout, { responsive: true });
 
-    // Render initial plot
-    Plotly.newPlot('plot', [trace], layout, { responsive: true });
-
-    // Update function
     function updatePlot() {
-      const m = parseFloat(mRange.value);
-      const c = parseFloat(cRange.value);
-      const xMin = parseFloat(xMinRange.value);
-      const xMax = parseFloat(xMaxRange.value);
-
-      // Sync numeric inputs
-      mInput.value = m;
-      cInput.value = c;
-      xMinInput.value = xMin;
-      xMaxInput.value = xMax;
-
-      // Update equation with parentheses for negative c
-      const cStr = c < 0 ? `(${c.toFixed(2)})` : c.toFixed(2);
-      document.getElementById('equation').innerHTML = `\\(y = ${m.toFixed(2)}x + ${cStr}\\)`;
+      const m1 = parseFloat(mRange.value), c1 = parseFloat(cRange.value);
+      const xMin = parseFloat(xMinRange.value), xMax = parseFloat(xMaxRange.value);
+      const m2 = parseFloat(mRange2.value), c2 = parseFloat(cRange2.value);
+      // Sync inputs
+      mInput.value = m1; cInput.value = c1; xMinInput.value = xMin; xMaxInput.value = xMax; mInput2.value = m2; cInput2.value = c2;
+      // Equations
+      eq1El.innerHTML = `\\(y = ${m1.toFixed(2)}x + ${c1<0? '('+c1.toFixed(2)+')':c1.toFixed(2)}\\)`;
+      if (enableSecond.checked) eq2El.innerHTML = `\\(y = ${m2.toFixed(2)}x + ${c2<0? '('+c2.toFixed(2)+')':c2.toFixed(2)}\\)`;
       MathJax.typesetPromise();
-
-      // Generate x values based on domain
-      const x = [];
-      const step = (xMax - xMin) / 200;
-      for (let xi = xMin; xi <= xMax; xi += step) {
-        x.push(parseFloat(xi.toFixed(2)));
+      // Generate data
+      const xVals = [], step = (xMax - xMin) / 200;
+      for (let x = xMin; x <= xMax; x += step) xVals.push(parseFloat(x.toFixed(2)));
+      const y1 = xVals.map(x => m1 * x + c1);
+      trace1.x = xVals; trace1.y = y1; let allY = y1;
+      const traces = [trace1];
+      if (enableSecond.checked) {
+        const y2 = xVals.map(x => m2 * x + c2);
+        trace2.x = xVals; trace2.y = y2; traces.push(trace2); allY = allY.concat(y2);
+        if (m1 !== m2) {
+          const xi = (c2 - c1) / (m1 - m2), yi = m1 * xi + c1;
+          intersectionEl.innerHTML = `Point of Intersection: \\((${xi.toFixed(2)}, ${yi.toFixed(2)}\\))`;
+          MathJax.typesetPromise();
+          intersectionMarker.x = [xi]; intersectionMarker.y = [yi];
+          traces.push(intersectionMarker);
+        } else {
+          intersectionEl.innerHTML = 'Point of Intersection: None';
+          intersectionMarker.x = []; intersectionMarker.y = [];
+        }
       }
-
-      // Compute y values
-      const y = x.map(xi => m * xi + c);
-
-      // Update trace and layout
-      trace.x = x;
-      trace.y = y;
       layout.xaxis.range = [xMin, xMax];
-
-      Plotly.react('plot', [trace], layout, { responsive: true });
+      layout.yaxis.range = [Math.min(...allY), Math.max(...allY)];
+      Plotly.react('plot', traces, layout, { responsive: true });
     }
 
-    // Initial draw
     updatePlot();
   </script>
 </body>
