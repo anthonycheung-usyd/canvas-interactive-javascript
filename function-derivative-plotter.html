@@ -77,7 +77,6 @@
       <label><input type="checkbox" id="secondDerivative"> Plot f''(x)</label>
       <label><input type="checkbox" id="tangentLine"> Show tangent line on hover</label>
     </div>
-    <!-- Domain controls -->
     <div class="domain-control">
       <label>Domain:</label>
       <div class="range-slider">
@@ -99,8 +98,7 @@
 
   <script>
     let xValues = [], yValues = [], slopeValues = [], secondValues = [], compiled = { f: null, f1: null, f2: null };
-    let lastRawInput = '';
-    let lastExpr = '';
+    let lastRawInput = '', lastExpr = '';
     const funcInput = document.getElementById('functionInput');
     const latexInput = document.getElementById('latexInput');
     const firstCb = document.getElementById('firstDerivative');
@@ -111,7 +109,6 @@
     const tangentInfo = document.getElementById('tangentInfo');
     const plotEl = document.getElementById('plot');
 
-    // domain controls
     const domainMinSlider = document.getElementById('domainMinSlider');
     const domainMaxSlider = document.getElementById('domainMaxSlider');
     const domainMinInput = document.getElementById('domainMinInput');
@@ -194,22 +191,35 @@
     function attachInteractions() {
       firstCb.addEventListener('change', () => Plotly.restyle(plotEl, 'visible', firstCb.checked ? true : 'legendonly', [1]));
       secondCb.addEventListener('change', () => Plotly.restyle(plotEl, 'visible', secondCb.checked ? true : 'legendonly', [2]));
+
       plotEl.on('plotly_hover', event => {
         if (!tangentCb.checked) return;
-        const x0 = event.points[0].x;
-        const idx = Math.round((x0 - parseFloat(domainMinInput.value)) / 0.1);
-        const y0 = yValues[idx];
-        const slope = slopeValues[idx];
-        const dx = (parseFloat(domainMaxInput.value) - parseFloat(domainMinInput.value)) / 20;
+        const i = event.points[0].pointIndex;
+        const x0 = xValues[i];
+        const y0 = yValues[i];
+        const slope = slopeValues[i];
+        const domainMin = parseFloat(domainMinInput.value);
+        const domainMax = parseFloat(domainMaxInput.value);
+        const dx = (domainMax - domainMin) / 20;
         const x1 = x0 - dx, y1 = slope * (x1 - x0) + y0;
         const x2 = x0 + dx, y2 = slope * (x2 - x0) + y0;
-        Plotly.relayout(plotEl, { shapes: [{ type: 'line', x0, y0: y1, x1: x2, y1: y2, line: { dash: 'dash' } }] });
+
+        Plotly.relayout(plotEl, {
+          shapes: [{
+            type: 'line',
+            x0: x1, y0: y1,
+            x1: x2, y1: y2,
+            line: { dash: 'dash' }
+          }]
+        });
+
         const intercept = y0 - slope * x0;
         const sign = intercept >= 0 ? '+' : '-';
         const absInt = Math.abs(intercept).toFixed(2);
-        tangentInfo.innerHTML = `At \\(x=${x0.toFixed(2)}\\), the tangent to \\(y=f(x)\\) is \(y = ${slope.toFixed(2)}x ${sign} ${absInt}\)`;
+        tangentInfo.innerHTML = `At \\(x=${x0.toFixed(2)}\\), the tangent to \\(y=f(x)\\) is \\(y = ${slope.toFixed(2)}x ${sign} ${absInt}\\)`;
         if (window.MathJax) MathJax.typesetPromise([tangentInfo]);
       });
+
       plotEl.on('plotly_unhover', () => {
         Plotly.relayout(plotEl, { shapes: [] });
         tangentInfo.innerHTML = '';
