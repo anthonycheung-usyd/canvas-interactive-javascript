@@ -13,6 +13,9 @@
     #controls {
       margin-bottom: 20px;
     }
+    .control-line {
+      margin-bottom: 10px;
+    }
     .control {
       display: inline-block;
       margin: 0 15px;
@@ -36,27 +39,31 @@
 <body>
   <h1>Interactive Line Plot</h1>
   <div id="controls">
-    <div class="control">
-      <label for="mRange">Slope (m):</label>
-      <input type="range" id="mRange" min="-10" max="10" step="0.1" value="2">
-      <input type="number" id="mInput" min="-10" max="10" step="0.1" value="2">
+    <div class="control-line">
+      <div class="control">
+        <label for="mRange">Slope (m):</label>
+        <input type="range" id="mRange" min="-10" max="10" step="0.1" value="2">
+        <input type="number" id="mInput" min="-10" max="10" step="0.1" value="2">
+      </div>
+      <div class="control">
+        <label for="cRange">Intercept (c):</label>
+        <input type="range" id="cRange" min="-10" max="10" step="0.1" value="3">
+        <input type="number" id="cInput" min="-10" max="10" step="0.1" value="3">
+      </div>
     </div>
-    <div class="control">
-      <label for="cRange">Intercept (c):</label>
-      <input type="range" id="cRange" min="-10" max="10" step="0.1" value="3">
-      <input type="number" id="cInput" min="-10" max="10" step="0.1" value="3">
+    <div class="control-line">
+      <div class="control">
+        <label for="xMinRange">x‑Min:</label>
+        <input type="range" id="xMinRange" min="-50" max="0" step="0.1" value="-10">
+        <input type="number" id="xMinInput" min="-50" max="0" step="0.1" value="-10">
+      </div>
+      <div class="control">
+        <label for="xMaxRange">x‑Max:</label>
+        <input type="range" id="xMaxRange" min="0" max="50" step="0.1" value="10">
+        <input type="number" id="xMaxInput" min="0" max="50" step="0.1" value="10">
+      </div>
     </div>
-    <div class="control">
-      <label for="xMinRange">x‑Min:</label>
-      <input type="range" id="xMinRange" min="-50" max="0" step="0.1" value="-10">
-      <input type="number" id="xMinInput" min="-50" max="0" step="0.1" value="-10">
-    </div>
-    <div class="control">
-      <label for="xMaxRange">x‑Max:</label>
-      <input type="range" id="xMaxRange" min="0" max="50" step="0.1" value="10">
-      <input type="number" id="xMaxInput" min="0" max="50" step="0.1" value="10">
-    </div>
-    <div class="control">
+    <div class="control-line">
       <button id="resetBtn">Reset</button>
     </div>
   </div>
