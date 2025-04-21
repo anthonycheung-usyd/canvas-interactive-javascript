@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Interactive Quadratic Plot</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      text-align: center;
+      margin: 20px;
+    }
+    #controls {
+      margin-bottom: 20px;
+    }
+    .control {
+      display: inline-block;
+      margin: 0 15px;
+    }
+    .control label {
+      margin-right: 5px;
+    }
+    #equation {
+      font-size: 1.5em;
+      margin-bottom: 10px;
+    }
+    #options {
+      margin-bottom: 10px;
+    }
+    #options label {
+      margin: 0 10px;
+      font-size: 1em;
+    }
+    #values {
+      font-size: 1em;
+      margin-bottom: 20px;
+    }
+    #plot {
+      width: 600px;
+      height: 600px;
+      margin: 0 auto;
+    }
+    #paramControls {
+      margin-top: 15px;
+    }
+  </style>
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+</head>
+<body>
+  <h1>Interactive Quadratic Plot</h1>
+  <div id="controls">
+    <div class="control">
+      <span>Choose form:</span>
+      <label><input type="radio" name="form" value="standard" checked> 1. \(y = ax^2 + bx + c\)</label>
+      <label><input type="radio" name="form" value="factorized"> 2. \(y = a(x - x_1)(x - x_2)\)</label>
+      <label><input type="radio" name="form" value="vertex"> 3. \(y = a(x - h)^2 + k\)</label>
+    </div>
+    <div id="paramControls"></div>
+    <div class="control">
+      <button id="resetBtn">Reset</button>
+    </div>
+  </div>
+
+  <div id="equation">\(y = 1.00x^2 + 0.00x + 0.00\)</div>
+  <div id="options">
+    <label><input type="checkbox" id="showVertex" checked> Show Vertex</label>
+    <label><input type="checkbox" id="showRoots" checked> Show Roots</label>
+  </div>
+  <div id="values"></div>
+  <div id="plot"></div>
+
+  <script>
+    // references
+    const formRadios = document.getElementsByName('form');
+    const paramControls = document.getElementById('paramControls');
+    const equationEl = document.getElementById('equation');
+    const valuesEl = document.getElementById('values');
+    const resetBtn = document.getElementById('resetBtn');
+
+    function getFormValue() {
+      return Array.from(formRadios).find(r => r.checked).value;
+    }
+
+    // parameter definitions for each form
+    const forms = {
+      standard: [
+        { id: 'a', label: 'a', min: -5, max: 5, step: 0.1, value: 1 },
+        { id: 'b', label: 'b', min: -10, max: 10, step: 0.1, value: 0 },
+        { id: 'c', label: 'c', min: -10, max: 10, step: 0.1, value: 0 }
+      ],
+      factorized: [
+        { id: 'a', label: 'a', min: -5, max: 5, step: 0.1, value: 1 },
+        { id: 'x1', label: 'x₁', min: -10, max: 10, step: 0.1, value: -1 },
+        { id: 'x2', label: 'x₂', min: -10, max: 10, step: 0.1, value: 1 }
+      ],
+      vertex: [
+        { id: 'a', label: 'a', min: -5, max: 5, step: 0.1, value: 1 },
+        { id: 'h', label: 'h', min: -10, max: 10, step: 0.1, value: 0 },
+        { id: 'k', label: 'k', min: -10, max: 10, step: 0.1, value: 0 }
+      ]
+    };
+
+    // create controls
+    function renderControls() {
+      paramControls.innerHTML = '';
+      const params = forms[getFormValue()];
+      params.forEach(p => {
+        const div = document.createElement('div');
+        div.className = 'control';
+        div.innerHTML = `
+          <label for="${p.id}Range">${p.label}:</label>
+          <input type="range" id="${p.id}Range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.value}">
+          <input type="number" id="${p.id}Input" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.value}">
+        `;
+        paramControls.appendChild(div);
+        sync(p.id + 'Range', p.id + 'Input');
+      });
+    }
+
+    // sync slider + number
+    function sync(rangeId, inputId) {
+      const r = document.getElementById(rangeId), i = document.getElementById(inputId);
+      r.addEventListener('input', updatePlot);
+      i.addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) { r.value = v; updatePlot(); }
+      });
+    }
+
+    // initial plot setup
+    let baseTrace = { x: [], y: [], mode: 'lines', line: { color: 'blue' }, hovertemplate: '(%{x:.2f}, %{y:.2f})<extra></extra>' };
+    const layout = {
+      xaxis: { range: [-10, 10], zeroline: true, showgrid: true, dtick: 1 },
+      yaxis: { range: [-10, 10], zeroline: true, showgrid: true, dtick: 1 },
+      margin: { l:40, r:20, b:40, t:40 },
+      hovermode: 'closest'
+    };
+    Plotly.newPlot('plot', [baseTrace], layout, { responsive: true });
+
+    // update plot, equation, values, and optional markers
+    function updatePlot() {
+      const form = getFormValue();
+      const showVertex = document.getElementById('showVertex').checked;
+      const showRoots = document.getElementById('showRoots').checked;
+
+      // gather parameters
+      const params = forms[form];
+      const vals = {};
+      params.forEach(p => {
+        const v = parseFloat(document.getElementById(p.id + 'Range').value);
+        document.getElementById(p.id + 'Input').value = v;
+        vals[p.id] = v;
+      });
+
+      // build standard a,b,c
+      let a, b, c;
+      if (form === 'standard') {
+        ({ a, b, c } = vals);
+      } else if (form === 'factorized') {
+        a = vals.a;
+        b = -a * (vals.x1 + vals.x2);
+        c = a * vals.x1 * vals.x2;
+      } else {
+        a = vals.a;
+        b = -2 * a * vals.h;
+        c = a * vals.h * vals.h + vals.k;
+      }
+      const expr = x => a * x*x + b * x + c;
+
+      // update equation display
+      if (form === 'standard') {
+        const bStr = b < 0 ? `(${b.toFixed(2)})` : b.toFixed(2);
+        const cStr = c < 0 ? `(${c.toFixed(2)})` : c.toFixed(2);
+        equationEl.innerHTML = `\\(y = ${a.toFixed(2)}x^2 + ${bStr}x + ${cStr}\\)`;
+      } else if (form === 'factorized') {
+        const x1s = vals.x1 < 0 ? `(${vals.x1.toFixed(2)})` : vals.x1.toFixed(2);
+        const x2s = vals.x2 < 0 ? `(${vals.x2.toFixed(2)})` : vals.x2.toFixed(2);
+        equationEl.innerHTML = `\\(y = ${vals.a.toFixed(2)}(x - ${x1s})(x - ${x2s})\\)`;
+      } else {
+        const hs = vals.h < 0 ? `(${vals.h.toFixed(2)})` : vals.h.toFixed(2);
+        const ks = vals.k < 0 ? `(${vals.k.toFixed(2)})` : vals.k.toFixed(2);
+        equationEl.innerHTML = `\\(y = ${vals.a.toFixed(2)}(x - ${hs})^2 + ${ks}\\)`;
+      }
+      MathJax.typesetPromise();
+
+      // generate curve data
+      const xs = [];
+      const xMin = -10, xMax = 10;
+      const step = (xMax - xMin) / 200;
+      for (let x = xMin; x <= xMax; x += step) xs.push(+x.toFixed(2));
+      const ys = xs.map(expr);
+
+      // compute vertex and roots
+      const xV = -b / (2 * a);
+      const yV = expr(xV);
+      const disc = b*b - 4*a*c;
+      let roots = [];
+      if (disc >= 0) {
+        const sqrtD = Math.sqrt(disc);
+        roots = [(-b + sqrtD) / (2*a), (-b - sqrtD) / (2*a)];
+      }
+
+      // display values with MathJax
+      let html = `\\(\\mathrm{Vertex} = (${xV.toFixed(2)}, ${yV.toFixed(2)})\\)`;
+      if (roots.length) {
+        const rootStr = roots.map(r => r.toFixed(2)).join(', ');
+        html += `<br>\\(\\text{Root(s): }${rootStr}\\)`;
+      } else {
+        html += `<br>\\(\\text{Root(s): None}\\)`;
+      }
+      valuesEl.innerHTML = html;
+      MathJax.typesetPromise();
+
+      // build traces
+      const traces = [{ x: xs, y: ys, mode: 'lines', line: { color: 'blue' } }];
+      if (showVertex) {
+        traces.push({ x: [xV], y: [yV], mode: 'markers', marker: { symbol: 'x', size: 12, color: 'green' }, name: 'Vertex', hovertemplate: 'Vertex (%{x:.2f}, %{y:.2f})<extra></extra>' });
+      }
+      if (showRoots && roots.length) {
+        traces.push({ x: roots, y: roots.map(expr), mode: 'markers', marker: { symbol: 'circle-open', size: 12, color: 'red' }, name: 'Roots', hovertemplate: 'Root (%{x:.2f}, %{y:.2f})<extra></extra>' });
+      }
+      Plotly.react('plot', traces, layout, { responsive: true });
+    }
+
+    // event listeners
+    Array.from(formRadios).forEach(r => r.addEventListener('change', () => { renderControls(); updatePlot(); }));
+    document.getElementById('showVertex').addEventListener('change', updatePlot);
+    document.getElementById('showRoots').addEventListener('change', updatePlot);
+    resetBtn.addEventListener('click', () => {
+      formRadios.forEach(r => r.checked = (r.value === 'standard'));
+      renderControls();
+      forms.standard.forEach(p => {
+        document.getElementById(p.id + 'Range').value = p.value;
+        document.getElementById(p.id + 'Input').value = p.value;
+      });
+      document.getElementById('showVertex').checked = true;
+      document.getElementById('showRoots').checked = true;
+      updatePlot();
+    });
+
+    // initial
+    renderControls();
+    updatePlot();
+  </script>
+</body>
+</html>
