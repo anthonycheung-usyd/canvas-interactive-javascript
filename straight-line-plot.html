@@ -80,8 +80,8 @@
 
   <script>
     // References
-    const mRange = document.getElementById('mRange'), mInput = document.getElementById('mInput');
-    const cRange = document.getElementById('cRange'), cInput = document.getElementById('cInput');
+    const mRange = document.getElementById('mRange'),   mInput = document.getElementById('mInput');
+    const cRange = document.getElementById('cRange'),   cInput = document.getElementById('cInput');
     const xMinRange = document.getElementById('xMinRange'), xMinInput = document.getElementById('xMinInput');
     const xMaxRange = document.getElementById('xMaxRange'), xMaxInput = document.getElementById('xMaxInput');
     const enableSecond = document.getElementById('enableSecond'), secondControls = document.getElementById('secondControls');
@@ -93,55 +93,111 @@
     // Sync controls
     function sync(rangeEl, inputEl) {
       rangeEl.addEventListener('input', () => { inputEl.value = rangeEl.value; updatePlot(); });
-      inputEl.addEventListener('input', e => { const v = parseFloat(e.target.value); if (!isNaN(v)) { rangeEl.value = v; updatePlot(); } });
+      inputEl.addEventListener('input', e => {
+        const v = parseFloat(e.target.value);
+        if (!isNaN(v)) { rangeEl.value = v; updatePlot(); }
+      });
     }
-    [[mRange,mInput],[cRange,cInput],[xMinRange,xMinInput],[xMaxRange,xMaxInput],[mRange2,mInput2],[cRange2,cInput2]].forEach(pair => sync(pair[0], pair[1]));
+    [[mRange,mInput],[cRange,cInput],[xMinRange,xMinInput],[xMaxRange,xMaxInput],[mRange2,mInput2],[cRange2,cInput2]]
+      .forEach(pair => sync(pair[0], pair[1]));
 
-    // Traces and layout
+    // Compute the _initial_ axis‐ranges once (from the default control values)
+    const initXmin = parseFloat(xMinRange.value),
+          initXmax = parseFloat(xMaxRange.value),
+          initM    = parseFloat(mRange.value),
+          initC    = parseFloat(cRange.value),
+          initYmin = initM * initXmin + initC,
+          initYmax = initM * initXmax + initC;
+
+    // Traces and layout with locked axes
     const trace1 = { x: [], y: [], mode: 'lines', name: 'Line 1', line: { color: 'red' } };
     const trace2 = { x: [], y: [], mode: 'lines', name: 'Line 2', line: { color: 'blue' } };
-    const intersectionMarker = { x: [], y: [], mode: 'markers', name: 'Intersection', marker: { size: 8, color: 'green' }, hoverinfo: 'skip' };
-    const layout = { xaxis: { zeroline: true, showgrid: true, dtick: 1 }, yaxis: { zeroline: true, showgrid: true, dtick: 1 }, margin: { l: 40, r: 20, b: 40, t: 40 }, hovermode: 'closest' };
+    const intersectionMarker = {
+      x: [], y: [], mode: 'markers', name: 'Intersection',
+      marker: { size: 8, color: 'green' }, hoverinfo: 'skip'
+    };
+    const layout = {
+      xaxis: { zeroline: true, showgrid: true, dtick: 1, autorange: false, range: [initXmin, initXmax] },
+      yaxis: { zeroline: true, showgrid: true, dtick: 1, autorange: false, range: [initYmin, initYmax] },
+      margin: { l: 40, r: 20, b: 40, t: 40 },
+      hovermode: 'closest'
+    };
 
     // Checkbox and reset
-    enableSecond.addEventListener('change', () => { secondControls.style.display = enableSecond.checked ? 'block' : 'none'; eq2El.style.display = enableSecond.checked ? 'block' : 'none'; intersectionEl.style.display = enableSecond.checked ? 'block' : 'none'; updatePlot(); });
-    resetBtn.addEventListener('click', () => { mRange.value = 2; mInput.value = 2; cRange.value = 3; cInput.value = 3; xMinRange.value = -10; xMinInput.value = -10; xMaxRange.value = 10; xMaxInput.value = 10; enableSecond.checked = false; secondControls.style.display = 'none'; eq2El.style.display = 'none'; intersectionEl.style.display = 'none'; mRange2.value = 1; mInput2.value = 1; cRange2.value = 0; cInput2.value = 0; updatePlot(); });
+    enableSecond.addEventListener('change', () => {
+      secondControls.style.display      = enableSecond.checked ? 'block' : 'none';
+      eq2El.style.display               = enableSecond.checked ? 'block' : 'none';
+      intersectionEl.style.display      = enableSecond.checked ? 'block' : 'none';
+      updatePlot();
+    });
+    resetBtn.addEventListener('click', () => {
+      mRange.value = 2; mInput.value = 2;
+      cRange.value = 3; cInput.value = 3;
+      xMinRange.value = initXmin; xMinInput.value = initXmin;
+      xMaxRange.value = initXmax; xMaxInput.value = initXmax;
+      enableSecond.checked = false;
+      secondControls.style.display = 'none';
+      eq2El.style.display = 'none';
+      intersectionEl.style.display = 'none';
+      mRange2.value = 1; mInput2.value = 1;
+      cRange2.value = 0; cInput2.value = 0;
+      updatePlot();
+    });
 
     // Initial plot
     Plotly.newPlot('plot', [trace1], layout, { responsive: true });
 
     function updatePlot() {
-      const m1 = parseFloat(mRange.value), c1 = parseFloat(cRange.value);
-      const xMin = parseFloat(xMinRange.value), xMax = parseFloat(xMaxRange.value);
-      const m2 = parseFloat(mRange2.value), c2 = parseFloat(cRange2.value);
+      const m1   = parseFloat(mRange.value),
+            c1   = parseFloat(cRange.value),
+            xMin = parseFloat(xMinRange.value),
+            xMax = parseFloat(xMaxRange.value),
+            m2   = parseFloat(mRange2.value),
+            c2   = parseFloat(cRange2.value);
+
       // Sync inputs
-      mInput.value = m1; cInput.value = c1; xMinInput.value = xMin; xMaxInput.value = xMax; mInput2.value = m2; cInput2.value = c2;
+      mInput.value   = m1;  cInput.value   = c1;
+      xMinInput.value= xMin; xMaxInput.value= xMax;
+      mInput2.value  = m2;  cInput2.value  = c2;
+
       // Equations
       eq1El.innerHTML = `\\(y = ${m1.toFixed(2)}x + ${c1<0? '('+c1.toFixed(2)+')':c1.toFixed(2)}\\)`;
-      if (enableSecond.checked) eq2El.innerHTML = `\\(y = ${m2.toFixed(2)}x + ${c2<0? '('+c2.toFixed(2)+')':c2.toFixed(2)}\\)`;
+      if (enableSecond.checked) {
+        eq2El.innerHTML = `\\(y = ${m2.toFixed(2)}x + ${c2<0? '('+c2.toFixed(2)+')':c2.toFixed(2)}\\)`;
+      }
       MathJax.typesetPromise();
+
       // Generate data
       const xVals = [], step = (xMax - xMin) / 200;
-      for (let x = xMin; x <= xMax; x += step) xVals.push(parseFloat(x.toFixed(2)));
-      const y1 = xVals.map(x => m1 * x + c1);
-      trace1.x = xVals; trace1.y = y1; let allY = y1;
-      const traces = [trace1];
+      for (let x = xMin; x <= xMax; x += step) {
+        xVals.push(parseFloat(x.toFixed(2)));
+      }
+      trace1.x = xVals;
+      trace1.y = xVals.map(x => m1 * x + c1);
+
+      let traces = [trace1];
+
       if (enableSecond.checked) {
-        const y2 = xVals.map(x => m2 * x + c2);
-        trace2.x = xVals; trace2.y = y2; traces.push(trace2); allY = allY.concat(y2);
+        trace2.x = xVals;
+        trace2.y = xVals.map(x => m2 * x + c2);
+        traces.push(trace2);
+
         if (m1 !== m2) {
-          const xi = (c2 - c1) / (m1 - m2), yi = m1 * xi + c1;
+          const xi = (c2 - c1) / (m1 - m2),
+                yi = m1 * xi + c1;
           intersectionEl.innerHTML = `Point of Intersection: \\((${xi.toFixed(2)}, ${yi.toFixed(2)}\\))`;
           MathJax.typesetPromise();
-          intersectionMarker.x = [xi]; intersectionMarker.y = [yi];
+          intersectionMarker.x = [xi];
+          intersectionMarker.y = [yi];
           traces.push(intersectionMarker);
         } else {
           intersectionEl.innerHTML = 'Point of Intersection: None';
-          intersectionMarker.x = []; intersectionMarker.y = [];
+          intersectionMarker.x = [];
+          intersectionMarker.y = [];
         }
       }
-      layout.xaxis.range = [xMin, xMax];
-      layout.yaxis.range = [Math.min(...allY), Math.max(...allY)];
+
+      // **NO** axis‐range updates here—axes stay locked at the initial zoom!
       Plotly.react('plot', traces, layout, { responsive: true });
     }
 
