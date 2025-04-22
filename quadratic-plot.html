@@ -17,6 +17,9 @@
       display: inline-block;
       margin: 0 15px;
     }
+    .control-line {
+      margin-bottom: 10px;
+    }
     .control label {
       margin-right: 5px;
     }
@@ -50,6 +53,20 @@
 <body>
   <h1>Interactive Quadratic Plot</h1>
   <div id="controls">
+    <!-- Domain controls -->
+    <div class="control-line"><strong>Domain:</strong></div>
+    <div class="control-line">
+      <div class="control">
+        <label for="xMinRange">\(x_{\min}\):</label>
+        <input type="range" id="xMinRange" min="-50" max="0" step="0.1" value="-10">
+        <input type="number" id="xMinInput" min="-50" max="0" step="0.1" value="-10">
+      </div>
+      <div class="control">
+        <label for="xMaxRange">\(x_{\max}\):</label>
+        <input type="range" id="xMaxRange" min="0" max="50" step="0.1" value="10">
+        <input type="number" id="xMaxInput" min="0" max="50" step="0.1" value="10">
+      </div>
+    </div>
     <div class="control">
       <span>Choose form:</span>
       <label><input type="radio" name="form" value="standard" checked> 1. \(y = ax^2 + bx + c\)</label>
@@ -66,6 +83,8 @@
   <div id="options">
     <label><input type="checkbox" id="showVertex" checked> Show Vertex</label>
     <label><input type="checkbox" id="showRoots" checked> Show Roots</label>
+    <label><input type="checkbox" id="showYIntercept" checked> Show \(y\)‑intercept</label>
+    <label><input type="checkbox" id="showDiscriminant" checked> Show discriminant \(\Delta\)</label>
   </div>
   <div id="values"></div>
   <div id="plot"></div>
@@ -77,6 +96,12 @@
     const equationEl = document.getElementById('equation');
     const valuesEl = document.getElementById('values');
     const resetBtn = document.getElementById('resetBtn');
+
+    // also grab domain controls
+    const xMinRange = document.getElementById('xMinRange'),
+          xMinInput = document.getElementById('xMinInput'),
+          xMaxRange = document.getElementById('xMaxRange'),
+          xMaxInput = document.getElementById('xMaxInput');
 
     function getFormValue() {
       return Array.from(formRadios).find(r => r.checked).value;
@@ -91,8 +116,8 @@
       ],
       factorized: [
         { id: 'a', label: 'a', min: -5, max: 5, step: 0.1, value: 1 },
-        { id: 'x1', label: 'x₁', min: -10, max: 10, step: 0.1, value: -1 },
-        { id: 'x2', label: 'x₂', min: -10, max: 10, step: 0.1, value: 1 }
+        { id: 'x1', label: 'x_1', min: -10, max: 10, step: 0.1, value: -1 },
+        { id: 'x2', label: 'x_2', min: -10, max: 10, step: 0.1, value: 1 }
       ],
       vertex: [
         { id: 'a', label: 'a', min: -5, max: 5, step: 0.1, value: 1 },
@@ -109,7 +134,7 @@
         const div = document.createElement('div');
         div.className = 'control';
         div.innerHTML = `
-          <label for="${p.id}Range">${p.label}:</label>
+          <label for="${p.id}Range">\\(${p.label}\\):</label>
           <input type="range" id="${p.id}Range" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.value}">
           <input type="number" id="${p.id}Input" min="${p.min}" max="${p.max}" step="${p.step}" value="${p.value}">
         `;
@@ -121,17 +146,24 @@
     // sync slider + number
     function sync(rangeId, inputId) {
       const r = document.getElementById(rangeId), i = document.getElementById(inputId);
-      r.addEventListener('input', updatePlot);
+      r.addEventListener('input', () => {
+        i.value = r.value;
+        updatePlot();
+      });
       i.addEventListener('input', e => {
         const v = parseFloat(e.target.value);
         if (!isNaN(v)) { r.value = v; updatePlot(); }
       });
     }
 
+    // sync domain controls
+    sync('xMinRange','xMinInput');
+    sync('xMaxRange','xMaxInput');
+
     // initial plot setup
-    let baseTrace = { x: [], y: [], mode: 'lines', line: { color: 'blue' }, hovertemplate: '(%{x:.2f}, %{y:.2f})<extra></extra>' };
+    let baseTrace = { x: [], y: [], mode: 'lines', name: 'Parabola', line: { color: 'blue' }, hovertemplate: '(%{x:.2f}, %{y:.2f})<extra></extra>' };
     const layout = {
-      xaxis: { range: [-10, 10], zeroline: true, showgrid: true, dtick: 1 },
+      xaxis: { range: [parseFloat(xMinRange.value), parseFloat(xMaxRange.value)], zeroline: true, showgrid: true, dtick: 1 },
       yaxis: { range: [-10, 10], zeroline: true, showgrid: true, dtick: 1 },
       margin: { l:40, r:20, b:40, t:40 },
       hovermode: 'closest'
@@ -143,6 +175,12 @@
       const form = getFormValue();
       const showVertex = document.getElementById('showVertex').checked;
       const showRoots = document.getElementById('showRoots').checked;
+      const showYIntercept = document.getElementById('showYIntercept').checked;
+      const showDiscriminant = document.getElementById('showDiscriminant').checked;
+
+      // domain values
+      const xMin = parseFloat(xMinRange.value),
+            xMax = parseFloat(xMaxRange.value);
 
       // gather parameters
       const params = forms[form];
@@ -184,13 +222,6 @@
       }
       MathJax.typesetPromise();
 
-      // generate curve data
-      const xs = [];
-      const xMin = -10, xMax = 10;
-      const step = (xMax - xMin) / 200;
-      for (let x = xMin; x <= xMax; x += step) xs.push(+x.toFixed(2));
-      const ys = xs.map(expr);
-
       // compute vertex and roots
       const xV = -b / (2 * a);
       const yV = expr(xV);
@@ -201,25 +232,47 @@
         roots = [(-b + sqrtD) / (2*a), (-b - sqrtD) / (2*a)];
       }
 
-      // display values with MathJax
-      let html = `\\(\\mathrm{Vertex} = (${xV.toFixed(2)}, ${yV.toFixed(2)})\\)`;
-      if (roots.length) {
-        const rootStr = roots.map(r => r.toFixed(2)).join(', ');
-        html += `<br>\\(\\text{Root(s): }${rootStr}\\)`;
+      // display values
+      if (a === 0) {
+        valuesEl.innerHTML = 'NOT a parabola<br>Vertex = None<br>Roots: None';
       } else {
-        html += `<br>\\(\\text{Root(s): None}\\)`;
+        let html = `\\(\\text{Vertex: } (${xV.toFixed(2)}, ${yV.toFixed(2)})\\)`;
+        if (roots.length) {
+          const rootStr = roots.map(r => r.toFixed(2)).join(', ');
+          html += `<br>\\(\\text{Root(s): }${rootStr}\\)`;
+        } else {
+          html += `<br>\\(\\text{Root(s): None}\\)`;
+        }
+        if (showYIntercept) {
+          html += `<br>\\(y\\text{-intercept: }(0, ${c.toFixed(2)})\\)`;
+        }
+        if (showDiscriminant) {
+          html += `<br>\\(\\Delta = ${disc.toFixed(2)}\\)`;
+        }
+        valuesEl.innerHTML = html;
+        MathJax.typesetPromise();
       }
-      valuesEl.innerHTML = html;
-      MathJax.typesetPromise();
 
       // build traces
-      const traces = [{ x: xs, y: ys, mode: 'lines', line: { color: 'blue' } }];
-      if (showVertex) {
+      const xs = [];
+      const step = (xMax - xMin) / 200;
+      for (let x = xMin; x <= xMax; x += step) xs.push(+x.toFixed(2));
+      const ys = xs.map(expr);
+
+      const traces = [{ x: xs, y: ys, mode: 'lines', name: 'Parabola', line: { color: 'blue' } }];
+      if (showVertex && a !== 0) {
         traces.push({ x: [xV], y: [yV], mode: 'markers', marker: { symbol: 'x', size: 12, color: 'green' }, name: 'Vertex', hovertemplate: 'Vertex (%{x:.2f}, %{y:.2f})<extra></extra>' });
       }
-      if (showRoots && roots.length) {
+      if (showRoots && a !== 0 && roots.length) {
         traces.push({ x: roots, y: roots.map(expr), mode: 'markers', marker: { symbol: 'circle-open', size: 12, color: 'red' }, name: 'Roots', hovertemplate: 'Root (%{x:.2f}, %{y:.2f})<extra></extra>' });
       }
+      if (showYIntercept && a !== 0) {
+        traces.push({ x: [0], y: [c], mode: 'markers', marker: { symbol: 'diamond', size: 10, color: 'purple' }, name: 'y‑intercept', hovertemplate: 'y‑intercept (%{x:.2f}, %{y:.2f})<extra></extra>' });
+      }
+      if (showDiscriminant && a !== 0) {
+        // no trace needed for discriminant marker
+      }
+      layout.xaxis.range = [xMin, xMax];
       Plotly.react('plot', traces, layout, { responsive: true });
     }
 
@@ -227,6 +280,8 @@
     Array.from(formRadios).forEach(r => r.addEventListener('change', () => { renderControls(); updatePlot(); }));
     document.getElementById('showVertex').addEventListener('change', updatePlot);
     document.getElementById('showRoots').addEventListener('change', updatePlot);
+    document.getElementById('showYIntercept').addEventListener('change', updatePlot);
+    document.getElementById('showDiscriminant').addEventListener('change', updatePlot);
     resetBtn.addEventListener('click', () => {
       formRadios.forEach(r => r.checked = (r.value === 'standard'));
       renderControls();
@@ -234,8 +289,12 @@
         document.getElementById(p.id + 'Range').value = p.value;
         document.getElementById(p.id + 'Input').value = p.value;
       });
+      xMinRange.value = -10; xMinInput.value = -10;
+      xMaxRange.value = 10;  xMaxInput.value = 10;
       document.getElementById('showVertex').checked = true;
       document.getElementById('showRoots').checked = true;
+      document.getElementById('showYIntercept').checked = true;
+      document.getElementById('showDiscriminant').checked = true;
       updatePlot();
     });
 
