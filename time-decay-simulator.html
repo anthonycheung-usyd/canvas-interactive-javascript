@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1.0">
+  <title>Decay Curve Interactive Plotter</title>
+  <style>
+    :root {
+      --primary-color: #016B8F;
+      --bg-color: #f4f4f4;
+      --font: Arial, sans-serif;
+      --accent: #F29E4C;
+    }
+    body {
+      margin: 0;
+      padding: 0;
+      font-family: var(--font);
+      background: var(--bg-color);
+      color: #333;
+      text-align: center;
+    }
+    header {
+      background: var(--primary-color);
+      color: white;
+      padding: 1rem;
+    }
+    .equation {
+      font-size: 1.4rem;
+      font-weight: bold;
+      margin: 1rem auto;
+    }
+    .controls {
+      display: flex;
+      justify-content: center;
+      gap: 2rem;
+      flex-wrap: wrap;
+      margin: 1rem 0;
+    }
+    .control-group {
+      text-align: left;
+      max-width: 200px;
+    }
+    label {
+      display: block;
+      margin-bottom: 0.25rem;
+      font-weight: bold;
+    }
+    input[type=range],
+    input[type=number] {
+      width: 100%;
+      box-sizing: border-box;
+    }
+    #chart-container {
+      max-width: 700px;
+      margin: 0 auto 2rem;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>First-Order Kinetics Plotter</h1>
+  </header>
+
+  <div class="equation">
+    [A](t) = [A]<sub>0</sub> × e<sup>−k·t</sup>
+  </div>
+
+  <div class="controls">
+    <div class="control-group">
+      <label for="k">Rate constant k (s⁻¹): <span id="kVal">0.10</span></label>
+      <input type="range" id="k" min="0.01" max="1" step="0.01" value="0.10">
+      <input type="number" id="kInput" min="0.01" max="1" step="0.01" value="0.10">
+    </div>
+    <div class="control-group">
+      <label for="A0">Initial [A]<sub>0</sub> (mol·L⁻¹): <span id="A0Val">1.0</span></label>
+      <input type="range" id="A0" min="0.1" max="5" step="0.1" value="1.0">
+      <input type="number" id="A0Input" min="0.1" max="5" step="0.1" value="1.0">
+    </div>
+    <div class="control-group">
+      <label for="tMin">Min time t<sub>min</sub> (s): <span id="tMinVal">0.0</span></label>
+      <input type="range" id="tMin" min="0" max="100" step="0.5" value="0">
+      <input type="number" id="tMinInput" min="0" max="100" step="0.5" value="0">
+    </div>
+    <div class="control-group">
+      <label for="tMax">Max time t<sub>max</sub> (s): <span id="tMaxVal">50.0</span></label>
+      <input type="range" id="tMax" min="0" max="100" step="0.5" value="50">
+      <input type="number" id="tMaxInput" min="0" max="100" step="0.5" value="50">
+    </div>
+  </div>
+
+  <div class="controls">
+    <button id="startBtn">Start</button>
+    <button id="resetBtn">Reset</button>
+  </div>
+
+  <div id="chart-container">
+    <canvas id="decayChart"></canvas>
+  </div>
+
+  <!-- calculation controls and result table -->
+  <div id="calcControls" class="controls" style="display:none;">
+    <div class="control-group">
+      <label><input type="radio" name="calcVar" value="t" checked> Input t (s)</label>
+    </div>
+    <div class="control-group">
+      <label><input type="radio" name="calcVar" value="A"> Input A</label>
+    </div>
+    <div class="control-group">
+      <input type="number" id="calcInput" step="0.01" placeholder="Enter value">
+    </div>
+    <button id="calcSubmit">Submit</button>
+  </div>
+
+  <table id="resultTable" style="display:none; margin:0 auto 2rem; border-collapse:collapse;">
+    <thead>
+      <tr>
+        <th style="border:1px solid #333; padding:0.5rem;">t (s)</th>
+        <th style="border:1px solid #333; padding:0.5rem;">A</th>
+      </tr>
+    </thead>
+    <tbody></tbody>
+  </table>
+
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const kSlider    = document.getElementById('k'),
+          A0Slider   = document.getElementById('A0'),
+          kInput     = document.getElementById('kInput'),
+          A0Input    = document.getElementById('A0Input'),
+          kVal       = document.getElementById('kVal'),
+          A0Val      = document.getElementById('A0Val'),
+          tMinSlider = document.getElementById('tMin'),
+          tMaxSlider = document.getElementById('tMax'),
+          tMinInput  = document.getElementById('tMinInput'),
+          tMaxInput  = document.getElementById('tMaxInput'),
+          tMinVal    = document.getElementById('tMinVal'),
+          tMaxVal    = document.getElementById('tMaxVal'),
+          startBtn   = document.getElementById('startBtn'),
+          resetBtn   = document.getElementById('resetBtn'),
+          calcControls = document.getElementById('calcControls'),
+          resultTable  = document.getElementById('resultTable'),
+          calcInput    = document.getElementById('calcInput'),
+          calcSubmit   = document.getElementById('calcSubmit'),
+          ctx        = document.getElementById('decayChart').getContext('2d');
+
+    function computeAt(k, A0, t) {
+      return A0 * Math.exp(-k * t);
+    }
+
+    function makeSimData(k, A0) {
+      const data = [];
+      const tMin = +tMinSlider.value,
+            tMax = +tMaxSlider.value;
+      for (let t = tMin; t <= tMax; t += 0.5) {
+        data.push({ x: t, y: computeAt(k, A0, t) });
+      }
+      return data;
+    }
+
+    let chart = new Chart(ctx, {
+      type: 'scatter',
+      data: {
+        datasets: [
+          {
+            label: 'Decay Curve',
+            type: 'line',
+            data: makeSimData(+kSlider.value, +A0Slider.value),
+            fill: false,
+            borderColor: 'blue',
+            pointRadius: 0,
+            order: 1
+          },
+          {
+            label: 'Calculated Points',
+            type: 'scatter',
+            showLine: false,
+            data: [],
+            pointBackgroundColor: 'red',
+            pointBorderColor: 'red',
+            pointRadius: 3,
+            order: 2
+          }
+        ]
+      },
+      options: {
+        responsive: true,
+        scales: {
+          x: { type: 'linear', title: { display: true, text: 'Time (s)' } },
+          y: { title: { display: true, text: 'Concentration [A](t)' } }
+        },
+        plugins: { legend: { display: false } }
+      }
+    });
+
+    function updateChart() {
+      const k    = +kSlider.value,
+            A0   = +A0Slider.value,
+            tMin = +tMinSlider.value,
+            tMax = +tMaxSlider.value;
+      kVal.textContent      = k.toFixed(2);
+      A0Val.textContent     = A0.toFixed(1);
+      kInput.value          = k.toFixed(2);
+      A0Input.value         = A0.toFixed(1);
+      tMinVal.textContent   = tMin.toFixed(1);
+      tMaxVal.textContent   = tMax.toFixed(1);
+      tMinInput.value       = tMin.toFixed(1);
+      tMaxInput.value       = tMax.toFixed(1);
+
+      chart.data.datasets[0].data = makeSimData(k, A0);
+      chart.update();
+    }
+
+    [kSlider, A0Slider, tMinSlider, tMaxSlider].forEach(el =>
+      el.addEventListener('input', updateChart)
+    );
+
+    kInput.addEventListener('input', () => {
+      const v = parseFloat(kInput.value);
+      if (!isNaN(v)) {
+        kSlider.value = v;
+        updateChart();
+      }
+    });
+    A0Input.addEventListener('input', () => {
+      const v = parseFloat(A0Input.value);
+      if (!isNaN(v)) {
+        A0Slider.value = v;
+        updateChart();
+      }
+    });
+    tMinInput.addEventListener('input', () => {
+      const v = parseFloat(tMinInput.value);
+      if (!isNaN(v)) {
+        tMinSlider.value = v;
+        updateChart();
+      }
+    });
+    tMaxInput.addEventListener('input', () => {
+      const v = parseFloat(tMaxInput.value);
+      if (!isNaN(v)) {
+        tMaxSlider.value = v;
+        updateChart();
+      }
+    });
+
+    startBtn.addEventListener('click', () => {
+      kSlider.disabled    = true;
+      A0Slider.disabled   = true;
+      kInput.disabled     = true;
+      A0Input.disabled    = true;
+      tMinSlider.disabled = true;
+      tMaxSlider.disabled = true;
+      tMinInput.disabled  = true;
+      tMaxInput.disabled  = true;
+      calcControls.style.display = '';
+      resultTable.style.display  = '';
+    });
+
+    resetBtn.addEventListener('click', () => {
+      kSlider.disabled    = false;
+      A0Slider.disabled   = false;
+      kInput.disabled     = false;
+      A0Input.disabled    = false;
+      tMinSlider.disabled = false;
+      tMaxSlider.disabled = false;
+      tMinInput.disabled  = false;
+      tMaxInput.disabled  = false;
+      calcControls.style.display = 'none';
+      resultTable.style.display  = 'none';
+      resultTable.querySelector('tbody').innerHTML = '';
+      chart.data.datasets[1].data = [];
+      updateChart();
+    });
+
+    calcSubmit.addEventListener('click', () => {
+      const k  = +kSlider.value,
+            A0 = +A0Slider.value,
+            selected = document.querySelector('input[name="calcVar"]:checked').value,
+            val = parseFloat(calcInput.value);
+      let t, A;
+      if (selected === 't') {
+        t = val;
+        A = computeAt(k, A0, t);
+      } else {
+        A = val;
+        t = -Math.log(A / A0) / k;
+      }
+      if (isNaN(t) || isNaN(A)) return;
+      const row = document.createElement('tr'),
+            tdT  = document.createElement('td'),
+            tdA  = document.createElement('td');
+      tdT.style.border = '1px solid #333'; tdT.style.padding = '0.5rem';
+      tdA.style.border = '1px solid #333'; tdA.style.padding = '0.5rem';
+      tdT.textContent = t.toFixed(3);
+      tdA.textContent = A.toFixed(3);
+      resultTable.querySelector('tbody').appendChild(
+        row.appendChild(tdT) && row.appendChild(tdA) && row
+      );
+
+      // plot the point (t, A) on the scatter dataset
+      chart.data.datasets[1].data.push({ x: t, y: A });
+      chart.update();
+
+      calcInput.value = '';
+    });
+
+    // initialize
+    updateChart();
+  </script>
+</body>
+</html>
