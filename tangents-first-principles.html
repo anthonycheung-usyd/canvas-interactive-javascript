@@ -10,7 +10,7 @@
     input[type="text"], textarea, input[type="number"] { padding: 8px; font-size: 1em; border: 1px solid #ccc; border-radius: 4px; }
     input[type="text"] { width: 60%; }
     textarea { width: 60%; display: none; height: 2.5em; }
-    input[type="number"] { width: 80px; margin-left: 10px; }
+    input[type="number"] { margin-left: 10px; }
     label { margin-right: 15px; }
     button { padding: 10px 16px; font-size: 1em; border: none; border-radius: 4px; background: #007bff; color: #fff; cursor: pointer; }
     button:hover { background: #0056b3; }
@@ -52,12 +52,6 @@
       <label><input type="checkbox" id="useLatex"> Use LaTeX input</label>
     </div>
 
-    <!-- Plot Options -->
-    <div style="margin-top:10px;">
-      <label><input type="checkbox" id="exactTangent"> Plot secant through \(x = a\) and \(x = a + h\)</label>
-      <label><input type="checkbox" id="plotTangent"> Plot tangent at \(x = a\)</label>
-    </div>
-
     <!-- Domain Controls -->
     <div class="domain-control">
       <label>Domain:</label>
@@ -69,28 +63,31 @@
       <input type="number" id="domainMaxInput" step="0.1" value="10"/>
     </div>
 
-    <!-- a Controls -->
-    <div class="domain-control">
-      <label>\(a\):</label>
-      <div class="range-slider">
-        <input type="range" id="aSlider" min="-10" max="10" step="0.1" value="0"/>
-      </div>
-      <input type="number" id="aInput" step="0.1" value="0"/>
+    <!-- Plot Options -->
+    <div style="margin-top:10px;">
+      <label><input type="checkbox" id="exactTangent" disabled> Show secant through \(x = a\) and \(x = a + h\)</label>
+      <label><input type="checkbox" id="plotTangent" disabled> Show tangent at \(x = a\)</label>
     </div>
 
-    <!-- h Controls -->
+    <!-- a & h Controls -->
     <div class="domain-control">
-      <label>\(h\):</label>
-      <div class="range-slider">
-        <input type="range" id="hSlider" min="-5" max="5" step="0.001" value="0.1"/>
+      <label>\(a\):</label>
+      <div class="range-slider" style="flex:0 0 120px; margin:0 5px;">
+        <input type="range" id="aSlider" min="-10" max="10" step="0.1" value="1"/>
       </div>
-      <input type="number" id="hInput" min="-5" max="5" step="0.001" value="0.1"/>
+      <input type="number" id="aInput" step="0.1" value="1" style="width:60px; margin-right:15px;"/>
+      <label>\(h\):</label>
+      <div class="range-slider" style="flex:0 0 120px; margin:0 5px;">
+        <input type="range" id="hSlider" min="-5" max="5" step="0.001" value="0.5"/>
+      </div>
+      <input type="number" id="hInput" min="-5" max="5" step="0.001" value="0.5" style="width:60px;"/>
     </div>
 
     <!-- Buttons -->
     <div style="margin-top:15px;">
       <button id="plotButton">Plot Function</button>
       <button id="resetButton">Reset</button>
+      <button id="animateHButton">Animate h→0</button>
     </div>
 
     <!-- Equation & Info -->
@@ -106,6 +103,8 @@
     let xValues = [], yValues = [], slopeValues = [], tangentLineY = [], secantLineY = [];
     let a0 = 0, h0 = 0, fa0 = 0, fah0 = 0, m_exact = 0;
     let compiled = { f: null, f1: null };
+    let animateInterval = null;
+    let lastRaw = '', lastExpr = '';
 
     // ---- DOM Elements ----
     const funcInput    = document.getElementById('functionInput');
@@ -113,6 +112,7 @@
     const useLatexCb   = document.getElementById('useLatex');
     const exactCb      = document.getElementById('exactTangent');
     const plotTangentCb= document.getElementById('plotTangent');
+    const animateBtn   = document.getElementById('animateHButton');
     const eqDiv        = document.getElementById('equation');
     const tanDiv       = document.getElementById('tangentInfo');
     const plotEl       = document.getElementById('plot');
@@ -181,53 +181,88 @@
       latexInput.style.display = useLatexCb.checked ? 'block' : 'none';
     });
 
-    exactCb.addEventListener('change', () => renderPlot());
-    plotTangentCb.addEventListener('change', () => renderPlot());
-
     // ---- Plot / Reset ----
     document.getElementById('plotButton').addEventListener('click', () => {
       if (!parseAndCompute()) return;
       renderPlot();
+      exactCb.disabled = false;
+      plotTangentCb.disabled = false;
     });
     document.getElementById('resetButton').addEventListener('click', () => {
       funcInput.value = ''; latexInput.value = '';
       useLatexCb.checked = exactCb.checked = plotTangentCb.checked = false;
+      exactCb.disabled = true;
+      plotTangentCb.disabled = true;
       dMinS.value = dMinI.value = -10;
       dMaxS.value = dMaxI.value = 10;
-      aSlider.value = aInput.value = 0;
-      hSlider.value = hInput.value = 0.1;
+      aSlider.value = aInput.value = 1;
+      hSlider.value = hInput.value = 0.5;
       eqDiv.innerHTML = tanDiv.innerHTML = '';
       Plotly.purge(plotEl);
+      lastRaw = '';
+    });
+
+    // ---- Instant checkbox updates ----
+    exactCb.addEventListener('change', () => {
+      if (!parseAndCompute()) return;
+      renderPlot();
+    });
+    plotTangentCb.addEventListener('change', () => {
+      if (!parseAndCompute()) return;
+      renderPlot();
+    });
+
+    // ---- Animate h→0 ----
+    animateBtn.addEventListener('click', () => {
+      if (animateInterval) return;
+      animateInterval = setInterval(() => {
+        let h = parseFloat(hInput.value);
+        if (Math.abs(h) <= 0.1) {
+          h = 0;
+        } else {
+          h += h > 0 ? -0.1 : +0.1;
+        }
+        hInput.value = h.toFixed(3);
+        hSlider.value = h;
+        if (lastRaw) {
+          parseAndCompute();
+          renderPlot();
+        }
+        if (h === 0) {
+          clearInterval(animateInterval);
+          animateInterval = null;
+        }
+      }, 500);
     });
 
     // ---- Compute Data ----
-    let lastRaw = '', lastExpr = '';
     function parseAndCompute(){
       const raw = useLatexCb.checked ? latexInput.value.trim() : funcInput.value.trim();
-      if(!raw){ alert('Enter a function.'); return false; }
+      if (!raw) { alert('Enter a function.'); return false; }
       const expr = raw.replace(/\\([a-zA-Z]+)/g,'$1').replace(/[{}]/g,'');
-      const a = parseFloat(dMinI.value), b = parseFloat(dMaxI.value);
-      if(a>=b){ alert('Domain min must be < max.'); return false; }
+      const mn = parseFloat(dMinI.value), mx = parseFloat(dMaxI.value);
+      if (mn >= mx) { alert('Domain min must be < max.'); return false; }
       try {
         compiled.f  = math.parse(expr).compile();
         compiled.f1 = math.derivative(expr,'x').compile();
-      } catch(e){
-        alert('Parse error: '+e); return false;
+      } catch(e) {
+        alert('Parse error: ' + e); return false;
       }
-      xValues = math.range(a,b,0.1,true).toArray();
-      yValues = xValues.map(x=>compiled.f.evaluate({x}));
-      slopeValues = xValues.map(x=>compiled.f1.evaluate({x}));
+      xValues = math.range(mn, mx, 0.1, true).toArray();
+      yValues = xValues.map(x => compiled.f.evaluate({ x }));
+      slopeValues = xValues.map(x => compiled.f1.evaluate({ x }));
 
       a0   = parseFloat(aInput.value);
       h0   = parseFloat(hInput.value);
-      fa0  = compiled.f.evaluate({x:a0});
-      fah0 = compiled.f.evaluate({x:a0+h0});
-      m_exact = compiled.f1.evaluate({x:a0});
-      tangentLineY = xValues.map(x=>m_exact*(x-a0)+fa0);
-      const m_sec = (fah0-fa0)/h0;
-      secantLineY = xValues.map(x=>m_sec*(x-a0)+fa0);
+      fa0  = compiled.f.evaluate({ x: a0 });
+      fah0 = compiled.f.evaluate({ x: a0 + h0 });
+      m_exact = compiled.f1.evaluate({ x: a0 });
+      tangentLineY = xValues.map(x => m_exact * (x - a0) + fa0);
+      const m_sec = (fah0 - fa0) / h0;
+      secantLineY = xValues.map(x => m_sec * (x - a0) + fa0);
 
-      lastRaw = raw; lastExpr = expr;
+      lastRaw = raw;
+      lastExpr = expr;
       return true;
     }
 
@@ -238,38 +273,38 @@
       MathJax.typesetPromise([eqDiv]);
 
       const traces = [
-        { x:xValues, y:yValues,        mode:'lines',      name:'f(x)' },
-        { x:xValues, y:tangentLineY,   mode:'lines',      name:'tangent line at a', visible: plotTangentCb.checked ? true : 'legendonly' },
-        { x:xValues, y:secantLineY,    mode:'lines',      name:'secant line',        visible: exactCb.checked ? true : 'legendonly', line:{dash:'dot'} },
-        { x:[a0,a0+h0], y:[fa0,fah0],   mode:'markers+text', name:'key points',      visible: exactCb.checked ? true : 'legendonly', text:['a','a+h'], textposition:'top center' }
+        { x: xValues, y: yValues,       mode: 'lines',      name: 'f(x)' },
+        { x: xValues, y: tangentLineY,  mode: 'lines',      name: 'tangent at a', visible: plotTangentCb.checked ? true : 'legendonly' },
+        { x: xValues, y: secantLineY,   mode: 'lines',      name: 'secant line',    visible: exactCb.checked ? true : 'legendonly', line: { dash: 'dot' } },
+        { x: [a0, a0 + h0], y: [fa0, fah0], mode: 'markers+text', name: 'key points', visible: exactCb.checked ? true : 'legendonly', text: ['a','a+h'], textposition: 'top center' }
       ];
 
       Plotly.newPlot(plotEl, traces, {
-        title:'Function, Secant and/or Tangent',
-        xaxis:{title:'x'}, yaxis:{title:'y',zeroline:true}
-      }, {responsive:true});
+        title: 'Function, Secant and/or Tangent',
+        xaxis: { title: 'x' }, yaxis: { title: 'y', zeroline: true }
+      }, { responsive: true });
 
       attachHoverTangent();
     }
 
     // ---- Hover Tangent ----
     function attachHoverTangent(){
-      plotEl.on('plotly_hover', ev=>{
+      plotEl.on('plotly_hover', ev => {
         const i = ev.points[0].pointIndex;
-        const x0= xValues[i], y0= yValues[i], m= slopeValues[i];
-        const c= (y0-m*x0).toFixed(2), sign=c>=0?'+':'-';
+        const x0 = xValues[i], y0 = yValues[i], m = slopeValues[i];
+        const c = (y0 - m*x0).toFixed(2), sign = c >= 0 ? '+' : '-';
         tanDiv.innerHTML = `Tangent at \\(x=${x0.toFixed(2)}\\): \\(y=${m.toFixed(2)}x ${sign} ${Math.abs(c)}\\)`;
         MathJax.typesetPromise([tanDiv]);
       });
-      plotEl.on('plotly_unhover', ()=>{
+      plotEl.on('plotly_unhover', () => {
         tanDiv.innerHTML = '';
       });
     }
 
     // ---- Auto-replot on param change ----
     function tryReplot(){
-      if(lastRaw){
-        if(parseAndCompute()) renderPlot();
+      if (lastRaw) {
+        if (parseAndCompute()) renderPlot();
       }
     }
   </script>
