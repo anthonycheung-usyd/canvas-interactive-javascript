@@ -142,6 +142,7 @@
     <label id="showPlaneLabel" style="display: none;"><input type="checkbox" id="showPlane" onchange="compute()"> Show plane containing A and B</label>
     <label id="crossCheckbox"><input type="checkbox" id="showCross" onchange="compute()"> Show A × B</label>
     <label><input type="checkbox" id="showResultant" onchange="compute()"> Show resultant vector A + B</label>
+    <label><input type="checkbox" id="showParallelogram" onchange="compute()"> Show parallelogram law</label>
   </div>
 
   <div id="output"></div>
@@ -261,66 +262,72 @@
     }
 
     function draw2D() {
-	  ctx.clearRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-	  const a = A.slice(0, 2);
-	  const b = B.slice(0, 2);
-	  const proj = project(a, b);
-	  const orth = a.map((ai, i) => ai - proj[i]);
+      const a = A.slice(0, 2);
+      const b = B.slice(0, 2);
+      const proj = project(a, b);
+      const orth = a.map((ai, i) => ai - proj[i]);
 
-	  drawArrow(a, 'blue', 'A');
-	  drawArrow(b, 'red', 'B');
+      drawArrow(a, 'blue', 'A');
+      drawArrow(b, 'red', 'B');
 
-	  if (document.getElementById("showProjection").checked) {
-		drawArrow(proj, 'green', 'proj(A)', false);  // from origin
-		drawArrow(orth, 'green', 'A - proj(A)', true, proj);  // from tip of proj
-	  }
+      if (document.getElementById("showProjection").checked) {
+        drawArrow(proj, 'green', 'proj(A)', false);
+        drawArrow(orth, 'green', 'A - proj(A)', true, proj);
+      }
 
-	  drawAngleArc(a, b);
+      drawAngleArc(a, b);
 
-	  if (document.getElementById("showResultant").checked) {
-		const r = a.map((ai,i) => ai + b[i]);
-		drawArrow(r, 'purple', 'A+B');
-	  }
-	}
+      if (document.getElementById("showResultant").checked) {
+        const r = a.map((ai,i) => ai + b[i]);
+        drawArrow(r, 'purple', 'A+B');
+      }
+
+      if (document.getElementById("showParallelogram").checked) {
+        // draw A shifted to tip of B (dotted blue) and B shifted to tip of A (dotted red)
+        drawArrow(a, 'blue', 'A', true, b);
+        drawArrow(b, 'red', 'B', true, a);
+      }
+    }
 
     function drawArrow(v, color, label, dashed = false, base = [0, 0]) {
-	  const start = { x: origin.x + base[0]*scale, y: origin.y - base[1]*scale };
-	  const end = { x: start.x + v[0]*scale, y: start.y - v[1]*scale };
-	  const dx = end.x - start.x;
-	  const dy = end.y - start.y;
-	  const len = Math.sqrt(dx*dx + dy*dy);
+      const start = { x: origin.x + base[0]*scale, y: origin.y - base[1]*scale };
+      const end = { x: start.x + v[0]*scale, y: start.y - v[1]*scale };
+      const dx = end.x - start.x;
+      const dy = end.y - start.y;
+      const len = Math.sqrt(dx*dx + dy*dy);
 
-	  const arrowHeadLength = 10;
-	  const arrowHeadAngle = Math.PI / 8;
-	  const angle = Math.atan2(dy, dx);
+      const arrowHeadLength = 10;
+      const arrowHeadAngle = Math.PI / 8;
+      const angle = Math.atan2(dy, dx);
 
-	  ctx.font = '16px serif';
-	  ctx.beginPath();
-	  if (dashed) ctx.setLineDash([5,5]);
-	  ctx.moveTo(start.x, start.y);
-	  ctx.lineTo(end.x, end.y);
-	  ctx.strokeStyle = color;
-	  ctx.lineWidth = 2;
-	  ctx.stroke();
-	  ctx.setLineDash([]);
+      ctx.font = '16px serif';
+      ctx.beginPath();
+      if (dashed) ctx.setLineDash([5,5]);
+      ctx.moveTo(start.x, start.y);
+      ctx.lineTo(end.x, end.y);
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 2;
+      ctx.stroke();
+      ctx.setLineDash([]);
 
-	  ctx.beginPath();
-	  ctx.moveTo(end.x, end.y);
-	  ctx.lineTo(
-		end.x - arrowHeadLength * Math.cos(angle - arrowHeadAngle),
-		end.y - arrowHeadLength * Math.sin(angle - arrowHeadAngle)
-	  );
-	  ctx.lineTo(
-		end.x - arrowHeadLength * Math.cos(angle + arrowHeadAngle),
-		end.y - arrowHeadLength * Math.sin(angle + arrowHeadAngle)
-	  );
-	  ctx.lineTo(end.x, end.y);
-	  ctx.fillStyle = color;
-	  ctx.fill();
+      ctx.beginPath();
+      ctx.moveTo(end.x, end.y);
+      ctx.lineTo(
+        end.x - arrowHeadLength * Math.cos(angle - arrowHeadAngle),
+        end.y - arrowHeadLength * Math.sin(angle - arrowHeadAngle)
+      );
+      ctx.lineTo(
+        end.x - arrowHeadLength * Math.cos(angle + arrowHeadAngle),
+        end.y - arrowHeadLength * Math.sin(angle + arrowHeadAngle)
+      );
+      ctx.lineTo(end.x, end.y);
+      ctx.fillStyle = color;
+      ctx.fill();
 
-	  ctx.fillText(label, end.x + 6, end.y + 6);
-	}
+      ctx.fillText(label, end.x + 6, end.y + 6);
+    }
 
     function drawAngleArc(a, b) {
       const ua = unit(a), ub = unit(b);
@@ -388,70 +395,76 @@
     }
 
     function draw3D() {
-	  while (scene.children.length) scene.remove(scene.children[0]);
-	  drawArrow3D([5,0,0], 0x000000, "x-axis");
-	  drawArrow3D([0,5,0], 0x000000, "y-axis");
-	  drawArrow3D([0,0,5], 0x000000, "z-axis");
-	  drawArrow3D(A, 0x0000ff, "A");
-	  drawArrow3D(B, 0xff0000, "B");
+      while (scene.children.length) scene.remove(scene.children[0]);
+      drawArrow3D([5,0,0], 0x000000, "x-axis");
+      drawArrow3D([0,5,0], 0x000000, "y-axis");
+      drawArrow3D([0,0,5], 0x000000, "z-axis");
+      drawArrow3D(A, 0x0000ff, "A");
+      drawArrow3D(B, 0xff0000, "B");
 
-	  if (document.getElementById("showProjection").checked) {
-		const proj = project(A, B);
-		const orth = A.map((ai, i) => ai - proj[i]);
-		drawArrow3D(proj, 0x00aa00, "proj(A)", false);
-		drawArrow3D(orth, 0x00aa00, "A - proj(A)", true, proj);
-	  }
+      if (document.getElementById("showProjection").checked) {
+        const proj = project(A, B);
+        const orth = A.map((ai, i) => ai - proj[i]);
+        drawArrow3D(proj, 0x00aa00, "proj(A)", false);
+        drawArrow3D(orth, 0x00aa00, "A - proj(A)", true, proj);
+      }
 
-	  if (document.getElementById("showCross").checked)
-		drawArrow3D(cross(A, B), 0xff9900, "A×B");
+      if (document.getElementById("showCross").checked)
+        drawArrow3D(cross(A, B), 0xff9900, "A×B");
 
-	  if (document.getElementById("showPlane").checked) {
-		const a3 = new THREE.Vector3(...A);
-		const b3 = new THREE.Vector3(...B);
-		const normal = new THREE.Vector3().crossVectors(a3, b3).normalize();
-		const planeGeometry = new THREE.PlaneGeometry(5, 5);
-		const planeMaterial = new THREE.MeshBasicMaterial({
-		  color: 0x88ccff,
-		  side: THREE.DoubleSide,
-		  transparent: true,
-		  opacity: 0.5
-		});
-		const plane = new THREE.Mesh(planeGeometry, planeMaterial);
-		const zAxis = new THREE.Vector3(0, 0, 1);
-		const quaternion = new THREE.Quaternion().setFromUnitVectors(zAxis, normal);
-		plane.setRotationFromQuaternion(quaternion);
-		scene.add(plane);
-	  }
+      if (document.getElementById("showPlane").checked) {
+        const a3 = new THREE.Vector3(...A);
+        const b3 = new THREE.Vector3(...B);
+        const normal = new THREE.Vector3().crossVectors(a3, b3).normalize();
+        const planeGeometry = new THREE.PlaneGeometry(5, 5);
+        const planeMaterial = new THREE.MeshBasicMaterial({
+          color: 0x88ccff,
+          side: THREE.DoubleSide,
+          transparent: true,
+          opacity: 0.5
+        });
+        const plane = new THREE.Mesh(planeGeometry, planeMaterial);
+        const zAxis = new THREE.Vector3(0, 0, 1);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(zAxis, normal);
+        plane.setRotationFromQuaternion(quaternion);
+        scene.add(plane);
+      }
 
-	  if (document.getElementById("showResultant").checked) {
-		const r3 = A.map((ai,i) => ai + B[i]);
-		drawArrow3D(r3, 0x800080, "A+B");
-	  }
-	}
+      if (document.getElementById("showResultant").checked) {
+        const r3 = A.map((ai,i) => ai + B[i]);
+        drawArrow3D(r3, 0x800080, "A+B");
+      }
+
+      if (document.getElementById("showParallelogram").checked) {
+        // draw parallelogram edges as dashed arrows: A copy dotted blue, B copy dotted red
+        drawArrow3D(A, 0x0000ff, "A", true, B);
+        drawArrow3D(B, 0xff0000, "B", true, A);
+      }
+    }
 
     function drawArrow3D(vec, color, label, dashed = false, base = [0, 0, 0]) {
-	  const origin3 = new THREE.Vector3(...base);
-	  const end3 = new THREE.Vector3(...vec).add(origin3);
-	  const dir = new THREE.Vector3().subVectors(end3, origin3).normalize();
-	  const len = new THREE.Vector3().subVectors(end3, origin3).length();
+      const origin3 = new THREE.Vector3(...base);
+      const end3 = new THREE.Vector3(...vec).add(origin3);
+      const dir = new THREE.Vector3().subVectors(end3, origin3).normalize();
+      const len = new THREE.Vector3().subVectors(end3, origin3).length();
 
-	  if (dashed) {
-		const geometry = new THREE.BufferGeometry().setFromPoints([origin3, end3]);
-		const material = new THREE.LineDashedMaterial({ color, dashSize: 0.2, gapSize: 0.1, linewidth: 1 });
-		const line = new THREE.Line(geometry, material);
-		line.computeLineDistances();
-		scene.add(line);
-		const head = new THREE.ArrowHelper(dir, end3.clone().addScaledVector(dir, -0.4), 0.4, color, 0.4, 0.2);
-		scene.add(head);
-	  } else {
-		const arrow = new THREE.ArrowHelper(dir, origin3, len, color, 0.4, 0.2);
-		scene.add(arrow);
-	  }
+      if (dashed) {
+        const geometry = new THREE.BufferGeometry().setFromPoints([origin3, end3]);
+        const material = new THREE.LineDashedMaterial({ color, dashSize: 0.2, gapSize: 0.1, linewidth: 1 });
+        const line = new THREE.Line(geometry, material);
+        line.computeLineDistances();
+        scene.add(line);
+        const head = new THREE.ArrowHelper(dir, end3.clone().addScaledVector(dir, -0.4), 0.4, color, 0.4, 0.2);
+        scene.add(head);
+      } else {
+        const arrow = new THREE.ArrowHelper(dir, origin3, len, color, 0.4, 0.2);
+        scene.add(arrow);
+      }
 
-	  const labelSprite = makeTextSprite(label, color, 0.6);
-	  labelSprite.position.copy(end3.clone().addScaledVector(dir, 0.3));
-	  scene.add(labelSprite);
-	}
+      const labelSprite = makeTextSprite(label, color, 0.6);
+      labelSprite.position.copy(end3.clone().addScaledVector(dir, 0.3));
+      scene.add(labelSprite);
+    }
 
     function makeTextSprite(message, color = 0x000000, scale = 0.6) {
       const canvas = document.createElement('canvas');
