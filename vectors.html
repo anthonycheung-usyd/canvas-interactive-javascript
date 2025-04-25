@@ -413,6 +413,26 @@
       drawArrow3D(A, 0x0000ff, "A");
       drawArrow3D(B, 0xff0000, "B");
 
+      // draw the angle arc between OA and OB
+      const a3 = new THREE.Vector3(...A).normalize();
+      const b3 = new THREE.Vector3(...B).normalize();
+      const normal = new THREE.Vector3().crossVectors(a3, b3).normalize();
+      const angle = a3.angleTo(b3);
+      const arcPoints = [];
+      const segments = 32;
+      for (let i = 0; i <= segments; i++) {
+        const t = angle * i / segments;
+        arcPoints.push(a3.clone().applyAxisAngle(normal, t));
+      }
+      const arcGeometry = new THREE.BufferGeometry().setFromPoints(arcPoints);
+      const arcMaterial = new THREE.LineBasicMaterial({ color: 0x008000, linewidth: 2 });
+      const arc = new THREE.Line(arcGeometry, arcMaterial);
+      scene.add(arc);
+      const midPoint = a3.clone().applyAxisAngle(normal, angle / 2).multiplyScalar(1.2);
+      const thetaSprite = makeTextSprite('θ', 0x008000, 0.6);
+      thetaSprite.position.copy(midPoint);
+      scene.add(thetaSprite);
+
       if (document.getElementById("showProjection").checked) {
         const proj = project(A, B);
         const orth = A.map((ai, i) => ai - proj[i]);
@@ -424,9 +444,9 @@
         drawArrow3D(cross(A, B), 0xff9900, "OA×OB");
 
       if (document.getElementById("showPlane").checked) {
-        const a3 = new THREE.Vector3(...A);
-        const b3 = new THREE.Vector3(...B);
-        const normal = new THREE.Vector3().crossVectors(a3, b3).normalize();
+        const a3v = new THREE.Vector3(...A);
+        const b3v = new THREE.Vector3(...B);
+        const normalPlane = new THREE.Vector3().crossVectors(a3v, b3v).normalize();
         const planeGeometry = new THREE.PlaneGeometry(5, 5);
         const planeMaterial = new THREE.MeshBasicMaterial({
           color: 0x88ccff,
@@ -436,7 +456,7 @@
         });
         const plane = new THREE.Mesh(planeGeometry, planeMaterial);
         const zAxis = new THREE.Vector3(0, 0, 1);
-        const quaternion = new THREE.Quaternion().setFromUnitVectors(zAxis, normal);
+        const quaternion = new THREE.Quaternion().setFromUnitVectors(zAxis, normalPlane);
         plane.setRotationFromQuaternion(quaternion);
         scene.add(plane);
       }
@@ -447,7 +467,6 @@
       }
 
       if (document.getElementById("showParallelogram").checked) {
-        // draw parallelogram edges as dashed arrows: A copy dotted blue, B copy dotted red
         drawArrow3D(A, 0x0000ff, "A", true, B);
         drawArrow3D(B, 0xff0000, "B", true, A);
       }
@@ -485,7 +504,7 @@
       ctx2.fillStyle = "rgba(255,255,255,0.85)";
       ctx2.fillRect(0, 0, canvas.width, canvas.height);
       ctx2.font = "20px Arial";
-      ctx2.fillStyle = `#${color.toString(16).padStart(6, '0')}`;
+      ctx2.fillStyle = "#" + color.toString(16).padStart(6, '0');
       ctx2.textAlign = "center";
       ctx2.textBaseline = "middle";
       ctx2.fillText(message, canvas.width / 2, canvas.height / 2);
