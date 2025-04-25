@@ -179,10 +179,10 @@
       const axes = ['x', 'y', 'z'];
       const container = document.getElementById("vectorInputs");
       let html = `<table><tr><th></th>`;
-      for (let i = 0; i < dim; i++) html += `<th>${axes[i]}</th>`;
+      for (let i = 0; i < dim; i++) html += `<th>\\(${axes[i]}\\)</th>`;
       html += `</tr>`;
       ['A', 'B'].forEach(vec => {
-        html += `<tr><td>Vector ${vec}</td>`;
+        html += `<tr><td>\\(\\vec{${vec}}\\)</td>`;
         for (let i = 0; i < dim; i++) {
           const id = `${vec.toLowerCase()}${axes[i]}`;
           const val = (vec === 'A' ? A : B)[i];
