@@ -24,12 +24,26 @@
   <label for="functionInput">Enter the right hand side of the differential equation:<br><br>\(\dfrac{dy}{dt} =\)</label>
   <input type="text" id="functionInput" placeholder="e.g., y*(1-y)*(y-2)">
   <button onclick="plotFunction()">Plot</button>
+  <button onclick="resetPlots()">Reset</button>
 </div>
 <div id="equation-display"></div>
 <div id="plot"></div>
 <div id="solution-plot"></div>
 
 <script>
+Plotly.newPlot('plot', [], {
+  title: 'Stability of Equilibria',
+  xaxis: { title: 'y', range: [-10, 10] },
+  yaxis: { title: 'f(y)', range: [-10, 10] },
+  showlegend: false
+});
+Plotly.newPlot('solution-plot', [], {
+  title: 'Solution Curves',
+  xaxis: { title: 't', range: [0, 10] },
+  yaxis: { title: 'y(t)', range: [-10, 10] },
+  showlegend: true
+});
+
 function plotFunction() {
   const expr = document.getElementById('functionInput').value;
   if (!expr) return;
@@ -158,6 +172,23 @@ function plotFunction() {
     title: 'Solution Curves',
     xaxis: { title: 't' },
     yaxis: { title: 'y(t)' },
+    showlegend: true
+  });
+}
+
+function resetPlots() {
+  document.getElementById('functionInput').value = '';
+  document.getElementById('equation-display').innerHTML = '';
+  Plotly.newPlot('plot', [], {
+    title: 'Stability of Equilibria',
+    xaxis: { title: 'y', range: [-10, 10] },
+    yaxis: { title: 'f(y)', range: [-10, 10] },
+    showlegend: false
+  });
+  Plotly.newPlot('solution-plot', [], {
+    title: 'Solution Curves',
+    xaxis: { title: 't', range: [0, 10] },
+    yaxis: { title: 'y(t)', range: [-10, 10] },
     showlegend: true
   });
 }
