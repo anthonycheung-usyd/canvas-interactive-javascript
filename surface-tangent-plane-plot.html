@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Surface and Tangent Plane Plotter</title>
+  <!-- Plotly.js for 3D plotting -->
+  <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
+  <!-- Math.js for parsing and differentiating expressions -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
+  <!-- MathJax for rendering LaTeX -->
+  <script>
+    window.MathJax = {
+      tex: { inlineMath: [['$', '$'], ['\\(', '\\)']] }
+    };
+  </script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjax/3.2.0/es5/tex-mml-chtml.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; margin: 20px; }
+    .input-group { margin-bottom: 10px; }
+    label { display: inline-block; width: 80px; }
+    input { padding: 5px; width: 200px; }
+    button { padding: 8px 16px; }
+    #plot { width: 800px; height: 600px; margin-top: 20px; }
+    #info { margin-top: 10px; font-weight: bold; }
+  </style>
+</head>
+<body>
+  <h1>Surface and Tangent Plane Plotter</h1>
+
+  <div class="input-group">
+    <label for="func">\(f(x,y):\)</label>
+    <input type="text" id="func" value="x^2 + y^2">
+  </div>
+  <div class="input-group">
+    <label for="x0">\(x_0:\)</label>
+    <input type="number" id="x0" value="1">
+  </div>
+  <div class="input-group">
+    <label for="y0">\(y_0:\)</label>
+    <input type="number" id="y0" value="1">
+  </div>
+  <button id="plotBtn">Plot</button>
+  <div id="info"></div>
+
+  <div id="plot"></div>
+
+  <script>
+    // Generate plot for surface, tangent plane, and point
+    function generatePlot() {
+      try {
+        const expr = document.getElementById('func').value;
+        const x0 = parseFloat(document.getElementById('x0').value);
+        const y0 = parseFloat(document.getElementById('y0').value);
+
+        // Parse and compile function and derivatives
+        const fNode = math.parse(expr);
+        const f = fNode.compile();
+        const derivativeXNode = math.derivative(fNode, 'x');
+        const derivativeYNode = math.derivative(fNode, 'y');
+        const df_dx = derivativeXNode.compile();
+        const df_dy = derivativeYNode.compile();
+
+        // Compute f and its derivatives at (x0, y0)
+        const z0 = f.evaluate({ x: x0, y: y0 });
+        const fx0 = df_dx.evaluate({ x: x0, y: y0 });
+        const fy0 = df_dy.evaluate({ x: x0, y: y0 });
+
+        // Prepare LaTeX expressions using mathjs toTex()
+        const exprTex = fNode.toTex({ parenthesis: 'keep' });
+        const derivXTex = derivativeXNode.toTex({ parenthesis: 'keep' });
+        const derivYTex = derivativeYNode.toTex({ parenthesis: 'keep' });
+        const calcZ  = `f(${x0},${y0}) = ${exprTex} = ${z0.toFixed(3)}`;
+        const calcFsym = `\\frac{\\partial f}{\\partial x}(x,y) = ${derivXTex}, \\quad \\frac{\\partial f}{\\partial y}(x,y) = ${derivYTex}`;
+        const calcFstep = `\\bigl(x_0 = ${x0},\\; y_0 = ${y0}\\bigr)`;
+        const calcFnum  = `\\frac{\\partial f}{\\partial x}(${x0},${y0}) = ${fx0.toFixed(3)}, \\quad \\frac{\\partial f}{\\partial y}(${x0},${y0}) = ${fy0.toFixed(3)}`;
+        const pointLatex = `${x0}, ${y0}, ${z0.toFixed(3)}`;
+        const eqLatex    = `z = ${z0.toFixed(3)} + ${fx0.toFixed(3)}(x - ${x0}) + ${fy0.toFixed(3)}(y - ${y0})`;
+
+        // Display detailed steps and results
+        const infoDiv = document.getElementById('info');
+        infoDiv.innerHTML =
+          `<div>$${calcZ}$</div>` +
+          `<div>$${calcFsym} \\quad ${calcFstep} \\quad ${calcFnum}$</div>` +
+          `<div>Point P: $(${pointLatex})$<br>Tangent plane: $${eqLatex}$</div>`;
+        MathJax.typesetPromise();
+
+        // Set up grid for plot
+        const size = 50;
+        const range = 2;
+        const xVals = [];
+        const yVals = [];
+        for (let i = 0; i < size; i++) {
+          const t = i / (size - 1);
+          xVals.push(x0 - range + t * 2 * range);
+          yVals.push(y0 - range + t * 2 * range);
+        }
+
+        // Compute surface and tangent plane z-values
+        const zVals = [];
+        const planeZ = [];
+        for (let i = 0; i < size; i++) {
+          const zRow = [];
+          const pRow = [];
+          for (let j = 0; j < size; j++) {
+            const xi = xVals[j];
+            const yj = yVals[i];
+            const z = f.evaluate({ x: xi, y: yj });
+            zRow.push(z);
+            pRow.push(z0 + fx0 * (xi - x0) + fy0 * (yj - y0));
+          }
+          zVals.push(zRow);
+          planeZ.push(pRow);
+        }
+
+        // Plot surface, tangent plane, and point
+        const surface = { x: xVals, y: yVals, z: zVals, type: 'surface', name: 'Surface' };
+        const plane   = { x: xVals, y: yVals, z: planeZ, type: 'surface', opacity: 0.7, name: 'Tangent Plane' };
+        const point   = { x: [x0], y: [y0], z: [z0], type: 'scatter3d', mode: 'markers+text', marker: { size: 5, color: 'red' }, text: ['P'], textposition: 'top center', name: 'Point P' };
+        const layout  = { scene: { xaxis: { title: 'x' }, yaxis: { title: 'y' }, zaxis: { title: 'z' } }, title: 'Surface and Tangent Plane' };
+
+        Plotly.newPlot('plot', [surface, plane, point], layout);
+      } catch (err) {
+        console.error('Error generating plot:', err);
+        alert('An error occurred: ' + err.message);
+      }
+    }
+
+    // Bind event on DOM load
+    document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('plotBtn').addEventListener('click', generatePlot);
+      generatePlot();
+    });
+  </script>
+</body>
+</html>
