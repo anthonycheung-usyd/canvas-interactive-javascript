@@ -101,13 +101,13 @@
         const infoDoc = infoFrame.contentDocument || infoFrame.contentWindow.document;
         infoDoc.open();
         infoDoc.write(
-          `<style>body { line-height: 1.6; }</style>` +
+          `<style>body { line-height: 2; } div { margin-bottom: 0.8em; }</style>` +
           `<div>$${calcZsym}$</div>` +
           `<div>$${calcZstep} ${calcZnum}$</div>` +
           `<div>$${calcFsym}$</div>` +
           `<div>$${calcFxStep}, \\quad ${calcFyStep}$</div>` +
-          `<div>Point P: $(${x0}, ${y0}, ${z0.toFixed(3)})$<br>` +
-          `<div>Tangent plane at P: $${tangentGeneral} = ${tangentSub} = ${fmt(a.toFixed(3))}x + ${fmt(b.toFixed(3))}y + ${fmt(c.toFixed(3))}$</div>`
+          `<div>Point $P$: $(${x0}, ${y0}, ${z0.toFixed(3)})$<br>` +
+          `<div>Tangent plane at $P$: $${tangentGeneral} = ${tangentSub} = ${fmt(a.toFixed(3))}x + ${fmt(b.toFixed(3))}y + ${fmt(c.toFixed(3))}$</div>`
         );
         infoDoc.close();
         MathJax.typesetPromise([infoFrame.contentDocument.body]);
