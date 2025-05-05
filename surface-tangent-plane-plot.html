@@ -40,7 +40,9 @@
     <input type="number" id="y0" value="1">
   </div>
   <button id="plotBtn">Plot</button>
-  <div id="info"></div>
+  <button id="resetBtn">Reset</button>
+  <br>
+  <iframe id="info" width="800" height="150" frameborder="0"></iframe>
 
   <div id="plot"></div>
 
@@ -66,23 +68,49 @@
         const fy0 = df_dy.evaluate({ x: x0, y: y0 });
 
         // Prepare LaTeX expressions using mathjs toTex()
-        const exprTex = fNode.toTex({ parenthesis: 'keep' });
-        const derivXTex = derivativeXNode.toTex({ parenthesis: 'keep' });
-        const derivYTex = derivativeYNode.toTex({ parenthesis: 'keep' });
-        const calcZ  = `f(${x0},${y0}) = ${exprTex} = ${z0.toFixed(3)}`;
-        const calcFsym = `\\frac{\\partial f}{\\partial x}(x,y) = ${derivXTex}, \\quad \\frac{\\partial f}{\\partial y}(x,y) = ${derivYTex}`;
-        const calcFstep = `\\bigl(x_0 = ${x0},\\; y_0 = ${y0}\\bigr)`;
-        const calcFnum  = `\\frac{\\partial f}{\\partial x}(${x0},${y0}) = ${fx0.toFixed(3)}, \\quad \\frac{\\partial f}{\\partial y}(${x0},${y0}) = ${fy0.toFixed(3)}`;
-        const pointLatex = `${x0}, ${y0}, ${z0.toFixed(3)}`;
-        const eqLatex    = `z = ${z0.toFixed(3)} + ${fx0.toFixed(3)}(x - ${x0}) + ${fy0.toFixed(3)}(y - ${y0})`;
+        const exprTex     = fNode.toTex({ parenthesis: 'keep' });
+        const derivXTex   = derivativeXNode.toTex({ parenthesis: 'keep' });
+        const derivYTex   = derivativeYNode.toTex({ parenthesis: 'keep' });
 
-        // Display detailed steps and results
-        const infoDiv = document.getElementById('info');
-        infoDiv.innerHTML =
-          `<div>$${calcZ}$</div>` +
-          `<div>$${calcFsym} \\quad ${calcFstep} \\quad ${calcFnum}$</div>` +
-          `<div>Point P: $(${pointLatex})$<br>Tangent plane: $${eqLatex}$</div>`;
-        MathJax.typesetPromise();
+        // Helper to wrap negative values in parentheses
+        function fmt(v) {
+          return v < 0 ? `(${v})` : `${v}`;
+        }
+
+        // Show substitution into f
+        const calcZsym    = `f(x,y) = ${exprTex}`;
+        const calcZstep   = `f(${x0},${y0}) = ${exprTex.replace(/x/g, x0).replace(/y/g, y0)}`;
+        const calcZnum    = `= ${z0.toFixed(3)}`;
+
+        // Show substitution into partial derivatives
+        const calcFsym    = `\\frac{\\partial f}{\\partial x}(x,y) = ${derivXTex}, \\quad \\frac{\\partial f}{\\partial y}(x,y) = ${derivYTex}`;
+        const calcFxStep  = `\\frac{\\partial f}{\\partial x}(${x0},${y0}) = ${derivXTex.replace(/x/g, x0).replace(/y/g, y0)} = ${fx0.toFixed(3)}`;
+        const calcFyStep  = `\\frac{\\partial f}{\\partial y}(${x0},${y0}) = ${derivYTex.replace(/x/g, x0).replace(/y/g, y0)} = ${fy0.toFixed(3)}`;
+
+        // Coefficients for simplified tangent plane z = ax + by + c
+        const a = fx0;
+        const b = fy0;
+        const c = z0 - fx0 * x0 - fy0 * y0;
+
+        // Tangent plane
+        const tangentGeneral = `z = z_0 + f_x(x_0,y_0)(x - x_0) + f_y(x_0,y_0)(y - y_0)`;
+        const tangentSub     = `${z0.toFixed(3)} + ${fmt(fx0.toFixed(3))}(x - ${fmt(x0)}) + ${fmt(fy0.toFixed(3))}(y - ${fmt(y0)})`;
+
+        // Display detailed steps and results inside the iframe
+        const infoFrame = document.getElementById('info');
+        const infoDoc = infoFrame.contentDocument || infoFrame.contentWindow.document;
+        infoDoc.open();
+        infoDoc.write(
+          `<style>body { line-height: 1.6; }</style>` +
+          `<div>$${calcZsym}$</div>` +
+          `<div>$${calcZstep} ${calcZnum}$</div>` +
+          `<div>$${calcFsym}$</div>` +
+          `<div>$${calcFxStep}, \\quad ${calcFyStep}$</div>` +
+          `<div>Point P: $(${x0}, ${y0}, ${z0.toFixed(3)})$<br>` +
+          `<div>Tangent plane at P: $${tangentGeneral} = ${tangentSub} = ${fmt(a.toFixed(3))}x + ${fmt(b.toFixed(3))}y + ${fmt(c.toFixed(3))}$</div>`
+        );
+        infoDoc.close();
+        MathJax.typesetPromise([infoFrame.contentDocument.body]);
 
         // Set up grid for plot
         const size = 50;
@@ -128,6 +156,12 @@
     // Bind event on DOM load
     document.addEventListener('DOMContentLoaded', () => {
       document.getElementById('plotBtn').addEventListener('click', generatePlot);
+      document.getElementById('resetBtn').addEventListener('click', () => {
+        document.getElementById('func').value = "x^2 + y^2";
+        document.getElementById('x0').value = 1;
+        document.getElementById('y0').value = 1;
+        generatePlot();
+      });
       generatePlot();
     });
   </script>
