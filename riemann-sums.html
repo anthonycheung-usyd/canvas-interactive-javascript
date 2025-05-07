@@ -24,6 +24,20 @@
       #options { margin: 8px 0; }
       #canvasContainer { margin-top: 20px; }
       canvas { border: 1px solid #ccc; }
+	  button {
+        background-color: #007BFF;
+        color: white;
+        padding: 10px 18px;
+        margin: 8px;
+        border: none;
+        border-radius: 8px;
+        cursor: pointer;
+        font-size: 1em;
+        transition: background-color 0.3s;
+      }
+      button:hover {
+        background-color: #0056b3;
+      }
     </style>
   </head>
   <body>
@@ -97,7 +111,7 @@
 		const exprLatex = exprRaw.replace(/\b(sin|cos|tan|log|ln|sqrt|exp|abs)\b/g, '\\$1');
 
 		document.getElementById('integralDisplay').innerHTML =
-		  `<p>Approximating the integral \\(\\int_{${startRaw}}^{${endRaw}} ${exprLatex} \\,dx\\).</p>`;
+		  `<p>Approximating the integral \\(\\int_{${startRaw}}^{${endRaw}} ${exprLatex} \\,dx\\) below:</p>`;
 		if (window.MathJax) MathJax.typesetPromise();
         // (Existing calculateAndPlot code unchanged)
         let expr = document.getElementById('functionInput').value.trim();
