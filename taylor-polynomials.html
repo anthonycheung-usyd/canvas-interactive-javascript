@@ -2,16 +2,36 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8" />
-  <title>Taylor Polynomial Visualiser</title>
+  <title>Taylor Polynomial Visualizer</title>
   <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/mathjs/11.8.0/math.min.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
   <style>
     body { font-family: Arial, sans-serif; margin: 20px; }
-    .input-group { margin-bottom: 15px; display: flex; align-items: center; flex-wrap: wrap; }
-    label { width: auto; margin-right: 10px; }
+    label, button { margin: 8px 0; }
+    input[type="number"],
+    input[type="text"],
+    input[type="range"] {
+      width: 100px;
+      display: inline-block;
+      margin: 4px;
+    }
+    button {
+      display: block;
+      padding: 8px 16px;
+      font-size: 1em;
+      border: none;
+      border-radius: 4px;
+      background: #007bff;
+      color: #fff;
+      cursor: pointer;
+    }
+    button:hover {
+      background: #0056b3;
+    }
+    .input-group { margin-bottom: 15px; display: flex; align-items: center; flex-wrap: wrap; gap: 10px; }
     .input-group.inline > * { margin-right: 15px; }
-    input[type=number] { width: 80px; padding: 5px; margin: 0 10px; }
+    .button-row { display: flex; gap: 10px; margin: 10px 0; }
     .range-slider {
       position: relative;
       width: 300px;
@@ -31,13 +51,20 @@
     .range-slider input[type=range]::-webkit-slider-thumb {
       pointer-events: all;
       -webkit-appearance: none;
-      height: 16px; width: 16px; border-radius: 50%;
-      background: #007bff; cursor:pointer; margin-top: -6px;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #007bff;
+      cursor: pointer;
+      margin-top: -6px;
     }
     .range-slider input[type=range]::-moz-range-thumb {
       pointer-events: all;
-      height: 16px; width: 16px; border-radius: 50%;
-      background: #007bff; cursor:pointer;
+      height: 16px;
+      width: 16px;
+      border-radius: 50%;
+      background: #007bff;
+      cursor: pointer;
     }
     .range-slider input[type=range]::-webkit-slider-runnable-track {
       height: 4px;
@@ -49,23 +76,21 @@
       background: #ccc;
       border-radius: 2px;
     }
-    button { padding: 8px 16px; margin-right: 10px; }
     #plot { width: 900px; height: 500px; margin-top: 20px; }
     #taylorEqn { margin: 20px 0; font-size: 1.2em; }
   </style>
 </head>
 <body>
-  <h1>Taylor Polynomial Visualiser</h1>
-
+  <h1>Taylor Polynomial Visualizer</h1>
   <div class="input-group inline">
     <label for="func">Function \( f(x) \):</label>
     <input type="text" id="func" value="sin(x)">
-    <label for="x0">Expansion Point \( x_0 \):</label>
-    <input type="number" id="x0" value="0" step="0.1">
+    <!-- Changed the expansion-point input to text so users can enter “pi”, “e”, etc. -->
+	<label for="x0">Expansion Point \(x_0\):</label>
+	<input type="text" id="x0" value="0">
   </div>
-
   <div class="input-group">
-    <label>X-range:</label>
+    <label>\(x\) values:</label>
     <div class="range-slider">
       <input type="range" id="xMinSlider" min="-20" max="20" step="0.1" value="-10">
       <input type="range" id="xMaxSlider" min="-20" max="20" step="0.1" value="10">
@@ -73,9 +98,8 @@
     <input type="number" id="xmin" value="-10" step="0.1">
     <input type="number" id="xmax" value="10" step="0.1">
   </div>
-
   <div class="input-group">
-    <label>Y-range:</label>
+    <label>\(y\) values:</label>
     <div class="range-slider">
       <input type="range" id="yMinSlider" min="-10" max="10" step="0.1" value="-2">
       <input type="range" id="yMaxSlider" min="-10" max="10" step="0.1" value="2">
@@ -83,14 +107,12 @@
     <input type="number" id="ymin" value="-2" step="0.1">
     <input type="number" id="ymax" value="2" step="0.1">
   </div>
-
   <div class="input-group">
     <button onclick="initialPlot()">Plot</button>
     <button onclick="resetDefaults()">Reset</button>
   </div>
-
   <div class="input-group inline" id="orderControls">
-    <label>Taylor Orders:</label>
+    <label>Taylor polynomial \(P_n\) order \(n\):</label>
     <span id="orderCheckboxes">
       <label><input type="checkbox" value="1" disabled>1</label>
       <label><input type="checkbox" value="2" disabled>2</label>
@@ -100,16 +122,22 @@
       <label><input type="checkbox" value="6" disabled>6</label>
     </span>
   </div>
-
   <div id="taylorEqn"></div>
   <div id="plot"></div>
-
   <script>
     let xVals = [], yVals = [], fNode = null, fCompiled = null, x0 = 0;
+	
+	// at top of your script
+    let expansionPointStr = '0';  // default
 
     function factorial(n) {
       return n <= 1 ? 1 : n * factorial(n - 1);
     }
+
+    // Helper to wrap negative values in parentheses
+	function fmt(v) {
+	  return v < 0 ? `(${v})` : `${v}`;
+	}
 
     function computeTaylorTerms(order) {
       let terms = [], expr = fNode;
@@ -128,157 +156,142 @@
     }
 
     function latexFromTerms(terms) {
-      return terms.map(({ n, fn }) => {
-        const c = fn / factorial(n);
-        if (Math.abs(c) < 1e-10) return '';
-        return (n === 0 ? c.toFixed(3) : `${c.toFixed(3)}(x - ${x0})^${n}`);
-      }).filter(Boolean).join(' + ');
-    }
+	  return terms
+		.map(({ n, fn }) => {
+		  const c = fn / factorial(n);
+		  const coeff = fmt(c.toFixed(3));
+		  if (Math.abs(c) < 1e-10) return '';
+		  // use the raw expansionPointStr here, not fmt(x0)
+		  return n === 0
+			? `${coeff}`
+			: `${coeff}\\,(x - ${expansionPointStr})^{${n}}`;
+		})
+		.filter(Boolean)
+		.join(' + ');
+	}
 
     function initialPlot() {
-      const exprStr = document.getElementById("func").value;
-      x0 = parseFloat(document.getElementById("x0").value);
-      const xmin = parseFloat(document.getElementById("xmin").value);
-      const xmax = parseFloat(document.getElementById("xmax").value);
-      const ymin = parseFloat(document.getElementById("ymin").value);
-      const ymax = parseFloat(document.getElementById("ymax").value);
+	  // …before you evaluate numerically…
+	  const x0Raw = document.getElementById('x0').value;
+	  // convert the user input into proper TeX
+	  expansionPointStr = math.parse(x0Raw).toTex({ parenthesis: 'keep' });
+	  try {
+		x0 = math.evaluate(x0Raw);
+	  } catch (err) {
+		alert('Invalid expansion point: ' + err.message);
+		return;
+	  }
+	
+	  // Clear any previous plots and equations
+	  document.getElementById('taylorEqn').innerHTML = '';
+	  Plotly.purge('plot');
 
-      if (xmin >= xmax || ymin >= ymax) {
-        alert("Ensure that min < max for both x and y ranges.");
-        return;
-      }
+	  // Read inputs
+	  const exprStr = document.getElementById('func').value;
+	  // In initialPlot(), replace the old parseFloat() line with:
+	  const x0Str = document.getElementById('x0').value;
+	  try {
+		x0 = math.evaluate(x0Str);
+	  } catch (err) {
+	      alert('Invalid expansion point: ' + err.message);
+		  return;
+	  }
+	  const xmin = parseFloat(document.getElementById('xmin').value);
+	  const xmax = parseFloat(document.getElementById('xmax').value);
+	  const ymin = parseFloat(document.getElementById('ymin').value);
+	  const ymax = parseFloat(document.getElementById('ymax').value);
 
-      xVals = math.range(xmin, xmax, (xmax - xmin) / 400).toArray();
+	  if (xmin >= xmax || ymin >= ymax) {
+		alert('Ensure that min < max for both x and y ranges.');
+		return;
+	  }
 
-      try {
-        fNode = math.parse(exprStr);
-        fCompiled = fNode.compile();
-        yVals = xVals.map(x => fCompiled.evaluate({ x }));
+	  xVals = math.range(xmin, xmax, (xmax - xmin) / 400).toArray();
 
-        const trace = {
-          x: xVals,
-          y: yVals,
-          mode: 'lines',
-          name: 'f(x)',
-          line: { color: 'blue' }
-        };
+	  try {
+		fNode = math.parse(exprStr);
+		fCompiled = fNode.compile();
+		yVals = xVals.map(x => fCompiled.evaluate({ x }));
 
-        Plotly.newPlot('plot', [trace], {
-          title: 'Function and Taylor Polynomial(s)',
-          xaxis: { title: 'x', range: [xmin, xmax] },
-          yaxis: { title: 'y', range: [ymin, ymax] }
-        });
+		// Plot the base function and expansion point
+		Plotly.newPlot('plot', [
+		  { x: xVals, y: yVals, mode: 'lines', name: 'f(x)' },
+		  {
+			x: [x0],
+			y: [fCompiled.evaluate({ x: x0 })],
+			mode: 'markers',
+			name: 'Expansion Point',
+			type: 'scatter',
+			marker: { size: 10, symbol: 'circle-open', color: 'black' }
+		  }
+		], {
+		  title: 'Function and Taylor Polynomial(s)',
+		  xaxis: { title: 'x', range: [xmin, xmax] },
+		  yaxis: { title: 'y', range: [ymin, ymax] }
+		});
 
-        document.querySelectorAll('#orderCheckboxes input').forEach(cb => {
-          cb.disabled = false;
-        });
+		// Attach exactly one onchange handler per checkbox
+		document.querySelectorAll('#orderCheckboxes input').forEach(cb => {
+		  cb.disabled = false;
+		  cb.onchange = function() {
+			const order = parseInt(this.value);
+			const terms = computeTaylorTerms(order);
+			const taylorY = computeTaylorY(terms);
+			const latex = latexFromTerms(terms);
+			const trace = {
+			  x: xVals,
+			  y: taylorY,
+			  mode: 'lines',
+			  name: `Order ${order}`,
+			  line: { dash: 'dash' }
+			};
+			const divId = `taylorEqn-order-${order}`;
 
-        document.getElementById('taylorEqn').innerHTML = '';
-        MathJax.typesetPromise();
+			if (this.checked) {
+			  Plotly.addTraces('plot', trace);
+			  const div = document.createElement('div');
+			  div.id = divId;
+			  div.innerHTML = `\\[ T_${order}(x) = ${latex} \\]`;
+			  document.getElementById('taylorEqn').appendChild(div);
+			  MathJax.typesetPromise();
+			} else {
+			  // Remove the trace
+			  const plotDiv = document.getElementById('plot');
+			  const idx = plotDiv.data.findIndex(t => t.name === `Order ${order}`);
+			  if (idx >= 0) Plotly.deleteTraces('plot', idx);
+			  // Remove the equation div
+			  const oldDiv = document.getElementById(divId);
+			  if (oldDiv) oldDiv.remove();
+			}
+		  };
+		});
 
-      } catch (err) {
-        alert("Error: " + err.message);
-      }
-    }
-
-    function toggleOrderPlot(order, checked) {
-      const orderNum = parseInt(order);
-      const terms = computeTaylorTerms(orderNum);
-      const taylorY = computeTaylorY(terms);
-      const latex = latexFromTerms(terms);
-      const trace = {
-        x: xVals,
-        y: taylorY,
-        mode: 'lines',
-        name: `Order ${orderNum}`,
-        line: { dash: 'dash' }
-      };
-
-      Plotly.addTraces('plot', trace);
-      const eqnDiv = document.createElement('div');
-      eqnDiv.innerHTML = `\\[ T_${orderNum}(x) = ${latex} \\]`;
-      document.getElementById('taylorEqn').appendChild(eqnDiv);
-      MathJax.typesetPromise();
-    }
-
-    function removeOrderPlot(order) {
-      const plotDiv = document.getElementById('plot');
-      const traces = plotDiv.data;
-      const orderLabel = `Order ${order}`;
-      const index = traces.findIndex(trace => trace.name === orderLabel);
-      if (index >= 0) {
-        Plotly.deleteTraces('plot', index);
-      }
-
-      const eqnDiv = document.getElementById('taylorEqn');
-      Array.from(eqnDiv.children).forEach(child => {
-        if (child.textContent.includes(`T_${order}(x)`)) {
-          child.remove();
-        }
-      });
-    }
-
-    function attachOrderCheckboxEvents() {
-      document.querySelectorAll('#orderCheckboxes input').forEach(cb => {
-        cb.addEventListener('change', (e) => {
-          if (e.target.checked) {
-            toggleOrderPlot(e.target.value, true);
-          } else {
-            removeOrderPlot(e.target.value);
-          }
-        });
-      });
-    }
-
-    function syncDualSlider(minId, maxId, inputMinId, inputMaxId) {
-      const minSlider = document.getElementById(minId);
-      const maxSlider = document.getElementById(maxId);
-      const minInput = document.getElementById(inputMinId);
-      const maxInput = document.getElementById(inputMaxId);
-
-      const sync = () => {
-        let min = parseFloat(minSlider.value);
-        let max = parseFloat(maxSlider.value);
-        if (min > max) [min, max] = [max, min];
-        minSlider.value = min;
-        maxSlider.value = max;
-        minInput.value = min;
-        maxInput.value = max;
-      };
-
-      minSlider.addEventListener('input', sync);
-      maxSlider.addEventListener('input', sync);
-      minInput.addEventListener('input', () => { minSlider.value = minInput.value; sync(); });
-      maxInput.addEventListener('input', () => { maxSlider.value = maxInput.value; sync(); });
-    }
+	  } catch (err) {
+		alert('Error: ' + err.message);
+	  }
+	}
 
     function resetDefaults() {
-      document.getElementById('func').value = 'sin(x)';
-      document.getElementById('x0').value = 0;
-
-      document.querySelectorAll('#orderCheckboxes input').forEach(cb => {
-        cb.checked = false;
-        cb.disabled = true;
-      });
-
-      document.getElementById('xMinSlider').value = -10;
-      document.getElementById('xMaxSlider').value = 10;
-      document.getElementById('xmin').value = -10;
-      document.getElementById('xmax').value = 10;
-
-      document.getElementById('yMinSlider').value = -2;
-      document.getElementById('yMaxSlider').value = 2;
-      document.getElementById('ymin').value = -2;
-      document.getElementById('ymax').value = 2;
-
-      document.getElementById('taylorEqn').innerHTML = '';
-      Plotly.purge('plot');
-    }
+	  document.getElementById('func').value = 'sin(x)';
+	  document.getElementById('x0').value = 0;
+	  document.querySelectorAll('#orderCheckboxes input').forEach(cb => {
+		cb.checked = false;
+		cb.disabled = true;
+	  });
+	  document.getElementById('xMinSlider').value = -10;
+	  document.getElementById('xMaxSlider').value = 10;
+	  document.getElementById('xmin').value = -10;
+	  document.getElementById('xmax').value = 10;
+	  document.getElementById('yMinSlider').value = -2;
+	  document.getElementById('yMaxSlider').value = 2;
+	  document.getElementById('ymin').value = -2;
+	  document.getElementById('ymax').value = 2;
+	  // Clear any existing plot/equations
+	  document.getElementById('taylorEqn').innerHTML = '';
+	  Plotly.purge('plot');
+	}
 
     document.addEventListener("DOMContentLoaded", () => {
-      syncDualSlider('xMinSlider', 'xMaxSlider', 'xmin', 'xmax');
-      syncDualSlider('yMinSlider', 'yMaxSlider', 'ymin', 'ymax');
-      attachOrderCheckboxEvents();
       resetDefaults();
     });
   </script>
